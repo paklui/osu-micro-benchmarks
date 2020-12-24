@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Fetch_and_op%s latency Test"
 /*
- * Copyright (C) 2003-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -12,7 +12,7 @@
 #include <osu_util_mpi.h>
 
 double  t_start = 0.0, t_end = 0.0;
-uint64_t *sbuf=NULL, *rbuf=NULL, *tbuf=NULL;
+uint64_t *sbuf=NULL, *tbuf=NULL, *win_base = NULL;
 
 void print_latency (int, int);
 void run_fop_with_lock (int, enum WINDOW);
@@ -155,8 +155,8 @@ void run_fop_with_flush_local (int rank, enum WINDOW type)
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
-            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf,
+            (char **)&tbuf, NULL, (char **)&win_base, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -179,7 +179,7 @@ void run_fop_with_flush_local (int rank, enum WINDOW type)
 
     print_latency(rank, 8);
 
-    free_atomic_memory (sbuf, rbuf, tbuf, NULL, win, rank);
+    free_atomic_memory (sbuf, win_base, tbuf, NULL, type, win, rank);
 }
 
 /*Run FOP with flush */
@@ -191,8 +191,8 @@ void run_fop_with_flush (int rank, enum WINDOW type)
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
-            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf,
+            (char **)&tbuf, NULL, (char **)&win_base, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -214,7 +214,7 @@ void run_fop_with_flush (int rank, enum WINDOW type)
 
     print_latency(rank, 8);
 
-    free_atomic_memory (sbuf, rbuf, tbuf, NULL, win, rank);
+    free_atomic_memory (sbuf, win_base, tbuf, NULL, type, win, rank);
 }
 
 /*Run FOP with Lock_all/unlock_all */
@@ -224,8 +224,8 @@ void run_fop_with_lock_all (int rank, enum WINDOW type)
     MPI_Aint disp = 0;
     MPI_Win     win;
 
-    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
-            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf,
+            (char **)&tbuf, NULL, (char **)&win_base, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -247,7 +247,7 @@ void run_fop_with_lock_all (int rank, enum WINDOW type)
 
     print_latency(rank, 8);
 
-    free_atomic_memory (sbuf, rbuf, tbuf, NULL, win, rank);
+    free_atomic_memory (sbuf, win_base, tbuf, NULL, type, win, rank);
 }
 
 /*Run FOP with Lock/unlock */
@@ -257,8 +257,8 @@ void run_fop_with_lock(int rank, enum WINDOW type)
     MPI_Aint disp = 0;
     MPI_Win     win;
 
-    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
-            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf,
+            (char **)&tbuf, NULL, (char **)&win_base, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -280,7 +280,7 @@ void run_fop_with_lock(int rank, enum WINDOW type)
 
     print_latency(rank, 8);
 
-    free_atomic_memory (sbuf, rbuf, tbuf, NULL, win, rank);
+    free_atomic_memory (sbuf, win_base, tbuf, NULL, type, win, rank);
 }
 
 /*Run FOP with Fence */
@@ -290,8 +290,8 @@ void run_fop_with_fence(int rank, enum WINDOW type)
     MPI_Aint disp = 0;
     MPI_Win     win;
 
-    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
-            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf,
+            (char **)&tbuf, NULL, (char **)&win_base, options.max_message_size, type, &win);
 
     if (type == WIN_DYNAMIC) {
         disp = disp_remote;
@@ -327,7 +327,7 @@ void run_fop_with_fence(int rank, enum WINDOW type)
         fflush(stdout);
     }
 
-    free_atomic_memory (sbuf, rbuf, tbuf, NULL, win, rank);
+    free_atomic_memory (sbuf, win_base, tbuf, NULL, type, win, rank);
 }
 
 /*Run FOP with Post/Start/Complete/Wait */
@@ -340,8 +340,8 @@ void run_fop_with_pscw(int rank, enum WINDOW type)
     MPI_Group       comm_group, group;
     MPI_CHECK(MPI_Comm_group(MPI_COMM_WORLD, &comm_group));
 
-    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
-            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf,
+            (char **)&tbuf, NULL, (char **)&win_base, options.max_message_size, type, &win);
 
     if (type == WIN_DYNAMIC) {
         disp = disp_remote;
@@ -394,6 +394,6 @@ void run_fop_with_pscw(int rank, enum WINDOW type)
     MPI_CHECK(MPI_Group_free(&group));
     MPI_CHECK(MPI_Group_free(&comm_group));
 
-    free_atomic_memory (sbuf, rbuf, tbuf, NULL, win, rank);
+    free_atomic_memory (sbuf, win_base, tbuf, NULL, type, win, rank);
 }
 /* vi: set sw=4 sts=4 tw=80: */

@@ -6,7 +6,7 @@ upc_PROGRAMS = osu_upc_memget osu_upc_memput osu_upc_all_barrier \
 	       osu_upc_all_gather_all osu_upc_all_gather osu_upc_all_reduce \
 	       osu_upc_all_scatter
 
-AM_CFLAGS = -I../util
+AM_CFLAGS = -I${top_srcdir}/util
 
 UTILITIES = ../util/osu_util.c ../util/osu_util.h  ../util/osu_util_pgas.c ../util/util_pgas.h
 

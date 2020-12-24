@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -90,10 +90,10 @@ extern int accel_enabled;
 extern struct options_t options;
 extern struct bad_usage_t bad_usage;
 
-void allocate_memory_one_sided(int rank, char **sbuf, char **rbuf,
+void allocate_memory_one_sided(int rank, char **sbuf,
         char **win_base, size_t size, enum WINDOW type, MPI_Win *win);
-void free_memory_one_sided (void *sbuf, void *rbuf, MPI_Win win, int rank);
+void free_memory_one_sided (void *user_buf, void *win_baseptr, enum WINDOW win_type, MPI_Win win, int rank);
 void allocate_atomic_memory(int rank,
-        char **sbuf, char **rbuf, char **tbuf, char **cbuf,
+        char **sbuf, char **tbuf, char **cbuf,
         char **win_base, size_t size, enum WINDOW type, MPI_Win *win);
-void free_atomic_memory (void *sbuf, void *rbuf, void *tbuf, void *cbuf, MPI_Win win, int rank);        
+void free_atomic_memory (void *sbuf, void *win_baseptr, void *tbuf, void *cbuf, enum WINDOW type, MPI_Win win, int rank);

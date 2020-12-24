@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Put Message Rate Test"
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -207,7 +207,7 @@ main (int argc, char *argv[])
      * Allocate Memory
      */
     use_heap = !strncmp(argv[1], "heap", 10);
-    alignment = use_heap ? sysconf(_SC_PAGESIZE) : 4096;
+    alignment = use_heap ? sysconf(_SC_PAGESIZE) : MESSAGE_ALIGNMENT_MR;
     msg_buffer = allocate_memory(v.me, alignment, use_heap);
     aligned_buffer = align_memory((unsigned long)msg_buffer, alignment);
     memset(aligned_buffer, 0, MAX_MESSAGE_SIZE * OSHM_LOOP_LARGE_MR);

@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Get_accumulate latency Test"
 /*
- * Copyright (C) 2003-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -85,8 +85,10 @@ int main (int argc, char *argv[])
     size = options.max_message_size;
     CHECK(posix_memalign((void **)&sbuf, page_size, size));
     memset(sbuf, 0, size);
-    CHECK(posix_memalign((void **)&rbuf, page_size, size));
-    memset(rbuf, 0, size);
+    if (options.win != WIN_ALLOCATE) {
+        CHECK(posix_memalign((void **)&rbuf, page_size, size));
+        memset(rbuf, 0, size);
+    }
     CHECK(posix_memalign((void **)&cbuf, page_size, size));
     memset(cbuf, 0, size);
 
@@ -116,7 +118,9 @@ int main (int argc, char *argv[])
     MPI_CHECK(MPI_Finalize());
 
     free(sbuf);
-    free(rbuf);
+    if (options.win != WIN_ALLOCATE) {
+        free(rbuf);
+    }
     free(cbuf);
 
     return EXIT_SUCCESS;
@@ -438,7 +442,7 @@ void allocate_memory_get_acc_lat(int rank, char *rbuf, int size, enum WINDOW typ
             MPI_CHECK(MPI_Win_create(rbuf, size, 1, MPI_INFO_NULL, MPI_COMM_WORLD, win));
             break;
         default:
-            MPI_CHECK(MPI_Win_allocate(size, 1, MPI_INFO_NULL, MPI_COMM_WORLD, rbuf, win));
+            MPI_CHECK(MPI_Win_allocate(size, 1, MPI_INFO_NULL, MPI_COMM_WORLD, (void*) &rbuf, win));
             break;
     }
 }

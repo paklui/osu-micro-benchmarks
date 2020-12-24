@@ -1,6 +1,6 @@
-#define BENCHMARK "OSU MPI Multi-threaded Latency Test"
+#define BENCHMARK "OSU MPI%s Multi-threaded Latency Test"
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -20,10 +20,10 @@ pthread_barrier_t sender_barrier;
 
 double t_start = 0, t_end = 0;
 
-int finished_size;
-int finished_size_sender;
+int finished_size = 0;
+int finished_size_sender = 0;
 
-int num_threads_sender=1;
+int num_threads_sender = 1;
 typedef struct thread_tag  {
         int id;
 } thread_tag_t;
@@ -33,7 +33,7 @@ void * recv_thread(void *arg);
 
 int main(int argc, char *argv[])
 {
-    int numprocs, provided, myid, err;
+    int numprocs = 0, provided = 0, myid = 0, err = 0;
     int i = 0;
     int po_ret = 0;
     pthread_t sr_threads[MAX_NUM_THREADS];
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
     err = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 
-    if(err != MPI_SUCCESS) {
+    if (err != MPI_SUCCESS) {
         MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, 1));
     }
 
@@ -105,8 +105,8 @@ int main(int argc, char *argv[])
             break;
     }
 
-    if(numprocs != 2) {
-        if(myid == 0) {
+    if (numprocs != 2) {
+        if (myid == 0) {
             fprintf(stderr, "This test requires exactly two processes\n");
         }
 
@@ -120,10 +120,10 @@ int main(int argc, char *argv[])
      */
 
     finished_size = 1;
-    finished_size_sender=1;
+    finished_size_sender = 1;
 
-    if(provided != MPI_THREAD_MULTIPLE) {
-        if(myid == 0) {
+    if (provided != MPI_THREAD_MULTIPLE) {
+        if (myid == 0) {
             fprintf(stderr,
                 "MPI_Init_thread must return MPI_THREAD_MULTIPLE!\n");
         }
@@ -134,38 +134,35 @@ int main(int argc, char *argv[])
     }
     
     
-    if(options.sender_thread!=-1) {
-        num_threads_sender=options.sender_thread;
+    if (options.sender_thread != -1) {
+        num_threads_sender = options.sender_thread;
     }
 
    
     pthread_barrier_init(&sender_barrier, NULL, num_threads_sender);
 
 
-    if(myid == 0) {
+    if (myid == 0) {
         printf("# Number of Sender threads: %d \n# Number of Receiver threads: %d\n",num_threads_sender,options.num_threads );
     
-        fprintf(stdout, HEADER);
+        print_header(myid, LAT_MT);
         fprintf(stdout, "%-*s%*s\n", 10, "# Size", FIELD_WIDTH, "Latency (us)");
         fflush(stdout);
 
-        for(i=0;i<num_threads_sender;i++) {
+        for (i = 0; i < num_threads_sender; i++) {
             tags[i].id = i;
             pthread_create(&sr_threads[i], NULL, send_thread, &tags[i]);
         }
-        for(i=0; i<num_threads_sender; i++) {
+        for (i=0; i < num_threads_sender; i++) {
             pthread_join(sr_threads[i], NULL);
         }
-
-    }
-
-    else {
-        for(i = 0; i < options.num_threads; i++) {
+    } else {
+        for (i = 0; i < options.num_threads; i++) {
             tags[i].id = i;
             pthread_create(&sr_threads[i], NULL, recv_thread, &tags[i]);
         }
 
-        for(i = 0; i < options.num_threads; i++) {
+        for (i = 0; i < options.num_threads; i++) {
             pthread_join(sr_threads[i], NULL);
         }
     }
@@ -175,10 +172,11 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-void * recv_thread(void *arg) {
-    unsigned long align_size = sysconf(_SC_PAGESIZE);
-    int size, i, val;
-    int iter;
+void * recv_thread(void *arg)
+{
+    int size = 0, i = 0, val = 0;
+    int iter = 0;
+    int myid = 0;
     char * ret = NULL;
     char *s_buf, *r_buf;
     thread_tag_t *thread_id;
@@ -186,22 +184,24 @@ void * recv_thread(void *arg) {
     thread_id = (thread_tag_t *)arg;
     val = thread_id->id;
 
-    if (posix_memalign((void**)&s_buf, align_size, options.max_message_size)) {
-        fprintf(stderr, "Error allocating host memory\n");
+    MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myid));
+
+    if (NONE != options.accel && init_accel()) {
+        fprintf(stderr, "Error initializing device\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (allocate_memory_pt2pt(&s_buf, &r_buf, myid)) {
+        /* Error allocating memory */
+        fprintf(stderr, "Error allocating memory on Rank %d, thread ID %d\n", myid, thread_id->id);
         *ret = '1';
         return ret;
     }
 
-    if (posix_memalign((void**)&r_buf, align_size, options.max_message_size)) {
-        fprintf(stderr, "Error allocating host memory\n");
-        *ret = '1';
-        return ret;
-    }
-
-    for(size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
+    for (size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
         pthread_mutex_lock(&finished_size_mutex);
 
-        if(finished_size == options.num_threads) {
+        if (finished_size == options.num_threads) {
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
             finished_size = 1;
@@ -217,24 +217,22 @@ void * recv_thread(void *arg) {
             pthread_mutex_unlock(&finished_size_mutex);
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }  
 
         /* touch the data */
-        for(i = 0; i < size; i++) {
-            s_buf[i] = 'a';
-            r_buf[i] = 'b';
-        }
+        set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
+        set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
-        for(i = val; i < (options.iterations + options.skip); i += options.num_threads) {
-            if(options.sender_thread>1) {
+        for (i = val; i < (options.iterations + options.skip); i += options.num_threads) {
+            if (options.sender_thread>1) {
                 MPI_Recv (r_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD,
                         &reqstat[val]);
                 MPI_Send (s_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD);
             }
-            else{
+            else {
                 MPI_Recv (r_buf, size, MPI_CHAR, 0, 1, MPI_COMM_WORLD,
                         &reqstat[val]);
                 MPI_Send (s_buf, size, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
@@ -244,8 +242,7 @@ void * recv_thread(void *arg) {
         iter++;
     }
 
-    free(r_buf);
-    free(s_buf);
+    free_memory(s_buf, r_buf, myid);
 
     sleep(1);
 
@@ -253,83 +250,77 @@ void * recv_thread(void *arg) {
 }
 
 
-void * send_thread(void *arg) {
-    unsigned long align_size = sysconf(_SC_PAGESIZE);
-    int size, i, val, iter;
+void * send_thread(void *arg)
+{
+    int size = 0, i = 0, val = 0, iter = 0;
+    int myid = 0;
     char *s_buf, *r_buf;
-    double t = 0, latency;
+    double t = 0, latency = 0;
     thread_tag_t *thread_id = (thread_tag_t *)arg;
     char *ret = NULL;
 
     val = thread_id->id;
 
-    if (posix_memalign((void**)&s_buf, align_size, options.max_message_size)) {
-        fprintf(stderr, "Error allocating host memory\n");
+    MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myid));
+
+    if (NONE != options.accel && init_accel()) {
+        fprintf(stderr, "Error initializing device\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (allocate_memory_pt2pt(&s_buf, &r_buf, myid)) {
+        /* Error allocating memory */
+        fprintf(stderr, "Error allocating memory on Rank %d, thread ID %d\n", myid, thread_id->id);
         *ret = '1';
         return ret;
     }
 
-    if (posix_memalign((void**)&r_buf, align_size, options.max_message_size)) {
-        fprintf(stderr, "Error allocating host memory\n");
-        *ret = '1';
-        return ret;
-    }
-
-    for(size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
+    for (size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
         pthread_mutex_lock(&finished_size_sender_mutex);
         
-        if(finished_size_sender == num_threads_sender) {
+        if (finished_size_sender == num_threads_sender) {
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
         
             finished_size_sender = 1;
 
             pthread_mutex_unlock(&finished_size_sender_mutex);
             pthread_cond_broadcast(&finished_size_sender_cond);
-        }
-
-        else {
-            
+        } else {  
             finished_size_sender++;
 
             pthread_cond_wait(&finished_size_sender_cond, &finished_size_sender_mutex);
             pthread_mutex_unlock(&finished_size_sender_mutex);
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }  
 
         /* touch the data */
-        for(i = 0; i < size; i++) {
-            s_buf[i] = 'a';
-            r_buf[i] = 'b';
-        }
+        set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
+        set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
+
         int flag_print=0;
-        for(i = val; i < options.iterations + options.skip; i+=num_threads_sender) {
-            if(i == options.skip) {
+        for (i = val; i < options.iterations + options.skip; i+=num_threads_sender) {
+            if (i == options.skip) {
                 t_start = MPI_Wtime();
                 flag_print =1;
             }
 
-            if(options.sender_thread>1) {
-                
-                
+            if (options.sender_thread>1) {     
                 MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, i, MPI_COMM_WORLD));
                 MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, i, MPI_COMM_WORLD,
                         &reqstat[val]));
-            }
-            else{
-
+            } else {
                 MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, 1, MPI_COMM_WORLD));
                 MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, 2, MPI_COMM_WORLD,
                         &reqstat[val]));
-            
             }
         }
 
         pthread_barrier_wait(&sender_barrier);
-        if(flag_print==1) {
+        if (flag_print==1) {
             t_end = MPI_Wtime ();
             t = t_end - t_start;
 
@@ -341,8 +332,7 @@ void * send_thread(void *arg) {
         iter++;
     }
 
-    free(r_buf);
-    free(s_buf);
+    free_memory(s_buf, r_buf, myid);
 
     return 0;
 }

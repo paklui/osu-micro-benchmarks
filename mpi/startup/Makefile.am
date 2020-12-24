@@ -1,6 +1,8 @@
 startupdir = $(pkglibexecdir)/mpi/startup
 startup_PROGRAMS = osu_init osu_hello
 
+AM_CFLAGS = -I${top_srcdir}/util
+
 if EMBEDDED_BUILD
     AM_LDFLAGS =
     AM_CPPFLAGS = -I$(top_builddir)/../src/include \

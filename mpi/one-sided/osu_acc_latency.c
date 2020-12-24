@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Accumulate%s latency Test"
 /*
- * Copyright (C) 2003-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -12,7 +12,7 @@
 #include <osu_util_mpi.h>
 
 double  t_start = 0.0, t_end = 0.0;
-char    *sbuf=NULL, *rbuf=NULL;
+char    *sbuf=NULL, *win_base=NULL;
 
 void print_latency (int, int);
 void run_acc_with_lock (int, enum WINDOW);
@@ -157,7 +157,7 @@ void run_acc_with_flush (int rank, enum WINDOW type)
     MPI_Win     win;
 
     for (size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &win_base, size, type, &win);
 
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
@@ -184,7 +184,7 @@ void run_acc_with_flush (int rank, enum WINDOW type)
 
         print_latency(rank, size);
 
-        free_memory_one_sided (sbuf, rbuf, win, rank);
+        free_memory_one_sided (sbuf, win_base, type, win, rank);
     }
 }
 
@@ -196,7 +196,7 @@ void run_acc_with_flush_local (int rank, enum WINDOW type)
     MPI_Win     win;
 
     for (size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &win_base, size, type, &win);
 
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
@@ -223,7 +223,7 @@ void run_acc_with_flush_local (int rank, enum WINDOW type)
 
         print_latency(rank, size);
 
-        free_memory_one_sided (sbuf, rbuf, win, rank);
+        free_memory_one_sided (sbuf, win_base, type, win, rank);
     }
 }
 
@@ -235,7 +235,7 @@ void run_acc_with_lock_all (int rank, enum WINDOW type)
     MPI_Win     win;
 
     for (size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &win_base, size, type, &win);
 
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
@@ -262,7 +262,7 @@ void run_acc_with_lock_all (int rank, enum WINDOW type)
 
         print_latency(rank, size);
 
-        free_memory_one_sided (sbuf, rbuf, win, rank);
+        free_memory_one_sided (sbuf, win_base, type, win, rank);
     }
 }
 #endif
@@ -275,7 +275,7 @@ void run_acc_with_lock(int rank, enum WINDOW type)
     MPI_Win     win;
 
     for (size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &win_base, size, type, &win);
 
 #if MPI_VERSION >= 3
         if (type == WIN_DYNAMIC) {
@@ -303,7 +303,7 @@ void run_acc_with_lock(int rank, enum WINDOW type)
 
         print_latency(rank, size);
 
-        free_memory_one_sided (sbuf, rbuf, win, rank);
+        free_memory_one_sided (sbuf, win_base, type, win, rank);
     }
 }
 
@@ -316,7 +316,7 @@ void run_acc_with_fence(int rank, enum WINDOW type)
 
 
     for (size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &win_base, size, type, &win);
 
 #if MPI_VERSION >= 3
         if (type == WIN_DYNAMIC) {
@@ -359,7 +359,7 @@ void run_acc_with_fence(int rank, enum WINDOW type)
             fflush(stdout);
         }
 
-        free_memory_one_sided (sbuf, rbuf, win, rank);
+        free_memory_one_sided (sbuf, win_base, type, win, rank);
     }
 }
 
@@ -374,7 +374,7 @@ void run_acc_with_pscw(int rank, enum WINDOW type)
     MPI_CHECK(MPI_Comm_group(MPI_COMM_WORLD, &comm_group));
 
     for (size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &win_base, size, type, &win);
 
 #if MPI_VERSION >= 3
         if (type == WIN_DYNAMIC) {
@@ -431,7 +431,7 @@ void run_acc_with_pscw(int rank, enum WINDOW type)
 
         MPI_CHECK(MPI_Group_free(&group));
 
-        free_memory_one_sided (sbuf, rbuf, win, rank);
+        free_memory_one_sided (sbuf, win_base, type, win, rank);
     }
     MPI_CHECK(MPI_Group_free(&comm_group));
 }

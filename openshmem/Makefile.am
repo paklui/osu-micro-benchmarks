@@ -8,7 +8,7 @@ openshmem_PROGRAMS = osu_oshm_get osu_oshm_put osu_oshm_put_mr \
 					 osu_oshm_get_nb osu_oshm_put_nb osu_oshm_put_overlap \
 					 osu_oshm_get_mr_nb osu_oshm_put_mr_nb 
 
-AM_CFLAGS = -I../util
+AM_CFLAGS = -I${top_srcdir}/util
 
 UTILITIES = ../util/osu_util.c ../util/osu_util.h ../util/osu_util_pgas.c ../util/osu_util_pgas.h
 

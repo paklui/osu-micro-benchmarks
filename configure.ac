@@ -2,11 +2,17 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([OSU-Micro-Benchmarks], [5.6.1], [mvapich-discuss@cse.ohio-state.edu])
+AC_INIT([OSU-Micro-Benchmarks], [5.7], [mvapich-discuss@cse.ohio-state.edu])
 AC_CONFIG_SRCDIR([mpi/pt2pt/osu_latency.c])
 
 AM_INIT_AUTOMAKE([foreign])
 LT_INIT
+
+dnl
+dnl Add NVCCFLAGS for additional flags
+dnl
+AC_ARG_VAR(NVCCFLAGS,
+	[extra NVCCFLAGS used in building OMB with CUDA kernel support])
 
 AC_ARG_ENABLE([openacc],
               [AS_HELP_STRING([--enable-openacc],
@@ -51,6 +57,23 @@ AC_ARG_WITH([cuda-libpath],
             [AS_CASE([$with_cuda_libpath],
                      [yes|no], [],
                      [LDFLAGS="-L$with_cuda_libpath -Wl,-rpath=$with_cuda_libpath $LDFLAGS"])
+            ])
+
+AC_ARG_ENABLE([rocm],
+              [AS_HELP_STRING([--enable-rocm],
+			                  [Enable ROCm benchmarks])
+              ],
+              [],
+              [enable_rocm=no])
+
+AC_ARG_WITH([rocm],
+            [AS_HELP_STRING([--with-rocm=@<:@ROCm installation path@:>@],
+                            [Provide path to ROCm installation])
+            ],
+            [AS_CASE([$with_rocm],
+                     [yes|no], [],
+                     [CPPFLAGS="-I$with_rocm/include $CPPFLAGS"
+                      LDFLAGS="-L$with_rocm/lib64 -Wl,-rpath=$with_rocm/lib64 -L$with_rocm/lib -Wl,-rpath=$with_rocm/lib -lamdhip64 $LDFLAGS"])
             ])
 
 # Checks for programs.
@@ -104,6 +127,15 @@ AS_IF([test "x$enable_openacc" = xyes], [
        AC_DEFINE([_ENABLE_OPENACC_], [1], [Enable OpenACC])
        ])
 
+AS_IF([test "x$enable_rocm" = xyes], [
+       AC_DEFINE([__HIP_PLATFORM_HCC__])
+       AC_CHECK_HEADERS([hip/hip_runtime_api.h], [],
+                        [AC_MSG_ERROR([cannot include hip/hip_runtime_api.h])])
+       AC_SEARCH_LIBS([hipFree], [amdhip64], [],
+                      [AC_MSG_ERROR([cannot link with -lamdhip64])])
+       AC_DEFINE([_ENABLE_ROCM_], [1], [Enable ROCm])
+       ])
+
 AS_CASE([$enable_cuda],
         [yes], [build_cuda_kernels=yes; build_cuda=yes],
         [basic], [build_cuda=yes])
@@ -130,6 +162,7 @@ AM_CONDITIONAL([MPI3_LIBRARY], [test x$mpi3_library = xtrue])
 AM_CONDITIONAL([CUDA], [test x$build_cuda = xyes])
 AM_CONDITIONAL([CUDA_KERNELS], [test x$build_cuda_kernels = xyes])
 AM_CONDITIONAL([OPENACC], [test x$enable_openacc = xyes])
+AM_CONDITIONAL([ROCM], [test x$enable_rocm = xyes])
 AM_CONDITIONAL([OSHM], [test x$oshm_library = xtrue])
 AM_CONDITIONAL([MPI], [test x$mpi_library = xtrue])
 AM_CONDITIONAL([UPC], [test x$upc_compiler = xtrue])

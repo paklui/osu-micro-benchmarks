@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -14,7 +14,7 @@
 #define UPC_SKIP_SMALL 200
 #define UPC_SKIP_LARGE 10
 
-#define MYBUFSIZE_MR (MAX_MESSAGE_SIZE * OSHM_LOOP_LARGE_MR + MESSAGE_ALIGNMENT)
+#define MYBUFSIZE_MR (MAX_MESSAGE_SIZE * OSHM_LOOP_LARGE_MR + MESSAGE_ALIGNMENT_MR)
 #define SYNC_MODE (UPC_IN_ALLSYNC | UPC_OUT_ALLSYNC)
 
 void usage_oshm_pt2pt(int myid);

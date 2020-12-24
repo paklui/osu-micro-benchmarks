@@ -5,7 +5,7 @@ upcxx_PROGRAMS = osu_upcxx_allgather osu_upcxx_alltoall osu_upcxx_bcast \
 	       osu_upcxx_gather osu_upcxx_reduce osu_upcxx_scatter \
 	       osu_upcxx_async_copy_get osu_upcxx_async_copy_put
 
-AM_CPPFLAGS = -I../util
+AM_CPPFLAGS = -I${top_srcdir}/util
 
 UTILITIES =  ../util/osu_util.c ../util/osu_util.h ../util/osu_util_pgas.c ../util/osu_util_pgas.h
 

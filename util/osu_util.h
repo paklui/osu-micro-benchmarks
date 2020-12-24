@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -27,8 +27,7 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include <limits.h>
-
-
+#include <sys/types.h>
 
 #ifdef _ENABLE_CUDA_
 #include "cuda.h"
@@ -60,6 +59,13 @@
 #   define CUDA_KERNEL_ENABLED 1
 #else
 #   define CUDA_KERNEL_ENABLED 0
+#endif
+
+#ifdef _ENABLE_ROCM_
+#   define ROCM_ENABLED 1
+#   include "hip/hip_runtime.h"
+#else
+#   define ROCM_ENABLED 0
 #endif
 
 #ifndef BENCHMARK
@@ -101,6 +107,19 @@ do {                                                                    \
        exit(EXIT_FAILURE);                                              \
    }                                                                    \
    assert(cudaSuccess == errno);                                        \
+} while (0)
+#endif
+
+#if defined(_ENABLE_ROCM_)
+#define ROCM_CHECK(stmt)                                                \
+do {                                                                    \
+   hipError_t errno = (stmt);                                           \
+   if (0 != errno) {                                                    \
+       fprintf(stderr, "[%s:%d] ROCM call '%s' failed with %d: %s \n",  \
+        __FILE__, __LINE__, #stmt, errno, hipGetErrorString(errno));    \
+       exit(EXIT_FAILURE);                                              \
+   }                                                                    \
+   assert(hipSuccess == errno);                                         \
 } while (0)
 #endif
 
@@ -147,7 +166,7 @@ enum mpi_req{
 #define OSHM_LOOP_LARGE_MR 50
 #define OSHM_LOOP_ATOMIC 500
 
-#define MAX_MESSAGE_SIZE (1 << 27)
+#define MAX_MESSAGE_SIZE (1 << 22)
 #define MAX_MSG_SIZE_PT2PT (1<<20)
 #define MAX_MSG_SIZE_COLL (1<<20)
 #define MIN_MESSAGE_SIZE 1
@@ -175,7 +194,8 @@ enum accel_type {
     NONE,
     CUDA,
     OPENACC,
-    MANAGED
+    MANAGED,
+    ROCM
 };
 
 enum target_type {
@@ -198,6 +218,7 @@ enum test_subtype {
     BW,
     LAT,
     LAT_MT,
+    LAT_MP,
     NBC,
 };
 
@@ -254,6 +275,8 @@ struct options_t {
     char dst;
     int num_threads;
     int sender_thread;
+    int num_processes;
+    int sender_processes;
     char managedSend;
     char managedRecv;
     enum WINDOW win;
@@ -263,8 +286,6 @@ struct options_t {
     int window_varied;
     int print_rate;
     int pairs;
-    int srcgid;
-    int dstgid;
 };
 
 struct bad_usage_t{
@@ -296,6 +317,11 @@ void enable_accel_support (void);
 #define DEF_NUM_THREADS 2
 #define MIN_NUM_THREADS 1
 #define MAX_NUM_THREADS 128
+
+#define DEF_NUM_PROCESSES 2
+#define MIN_NUM_PROCESSES 1
+#define MAX_NUM_PROCESSES 128
+#define CHILD_SLEEP_SECONDS 2
 
 #define WINDOW_SIZES {1, 2, 4, 8, 16, 32, 64, 128}
 #define WINDOW_SIZES_COUNT   (8)

@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Non-blocking All-to-All Latency Test"
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
