@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Put_nb Message Rate Test"
 /*
- * Copyright (C) 2002-2016 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -10,7 +10,7 @@
  */
 
 #include <shmem.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 char global_msg_buffer[MYBUFSIZE_MR];
 

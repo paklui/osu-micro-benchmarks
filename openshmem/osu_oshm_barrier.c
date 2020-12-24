@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Barrier Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -10,7 +10,7 @@
  */
 
 #include <shmem.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 long pSyncBarrier1[_SHMEM_BARRIER_SYNC_SIZE];
 long pSyncBarrier2[_SHMEM_BARRIER_SYNC_SIZE];

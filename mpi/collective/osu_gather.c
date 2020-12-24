@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Gather Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -8,7 +8,7 @@
  * For detailed copyright and licensing information, please refer to the
  * copyright file COPYRIGHT in the top level OMB directory.
  */
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 int
 main (int argc, char *argv[])

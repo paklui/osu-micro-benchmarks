@@ -107,7 +107,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(openshmemdir)"
 PROGRAMS = $(openshmem_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am__objects_1 = ../util/osu_util.$(OBJEXT)
+am__objects_1 = ../util/osu_util.$(OBJEXT) \
+	../util/osu_util_pgas.$(OBJEXT)
 am_osu_oshm_atomics_OBJECTS = osu_oshm_atomics.$(OBJEXT) \
 	$(am__objects_1)
 osu_oshm_atomics_OBJECTS = $(am_osu_oshm_atomics_OBJECTS)
@@ -365,7 +366,11 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = subdir-objects
 openshmemdir = $(pkglibexecdir)/openshmem
 AM_CFLAGS = -I../util
-UTILITIES = ../util/osu_util.c osu_util.h
+UTILITIES = ../util/osu_util.c ../util/osu_util.h ../util/osu_util_pgas.c ../util/osu_util_pgas.h
+@EMBEDDED_BUILD_TRUE@AM_CPPFLAGS = -I$(top_builddir)/../src/include \
+@EMBEDDED_BUILD_TRUE@                  -I${top_srcdir}/util \
+@EMBEDDED_BUILD_TRUE@                  -I${top_srcdir}/../src/include
+
 osu_oshm_get_SOURCES = osu_oshm_get.c $(UTILITIES)
 osu_oshm_put_SOURCES = osu_oshm_put.c $(UTILITIES)
 osu_oshm_put_mr_SOURCES = osu_oshm_put_mr.c $(UTILITIES)
@@ -470,6 +475,8 @@ clean-openshmemPROGRAMS:
 	@: > ../util/$(DEPDIR)/$(am__dirstamp)
 ../util/osu_util.$(OBJEXT): ../util/$(am__dirstamp) \
 	../util/$(DEPDIR)/$(am__dirstamp)
+../util/osu_util_pgas.$(OBJEXT): ../util/$(am__dirstamp) \
+	../util/$(DEPDIR)/$(am__dirstamp)
 
 osu_oshm_atomics$(EXEEXT): $(osu_oshm_atomics_OBJECTS) $(osu_oshm_atomics_DEPENDENCIES) $(EXTRA_osu_oshm_atomics_DEPENDENCIES) 
 	@rm -f osu_oshm_atomics$(EXEEXT)
@@ -535,6 +542,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@../util/$(DEPDIR)/osu_util.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@../util/$(DEPDIR)/osu_util_pgas.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osu_oshm_atomics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osu_oshm_barrier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osu_oshm_broadcast.Po@am__quote@

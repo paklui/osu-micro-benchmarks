@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Get_accumulate latency Test"
 /*
- * Copyright (C) 2003-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -9,12 +9,9 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 double  t_start = 0.0, t_end = 0.0;
-char    sbuf_original[MYBUFSIZE];
-char    rbuf_original[MYBUFSIZE];
-char    cbuf_original[MYBUFSIZE];
 char    *sbuf=NULL, *rbuf=NULL, *cbuf=NULL;
 MPI_Aint sdisp_remote;
 MPI_Aint sdisp_local;
@@ -36,6 +33,7 @@ int main (int argc, char *argv[])
     int         rank,nprocs;
     int         page_size;
     int         po_ret = PO_OKAY;
+    size_t      size;
 
     options.bench = ONE_SIDED;
     options.subtype = LAT;
@@ -84,20 +82,13 @@ int main (int argc, char *argv[])
     page_size = getpagesize();
     assert(page_size <= MAX_ALIGNMENT);
     
-    sbuf =
-        (char *) (((unsigned long) sbuf_original + (page_size - 1)) /
-                page_size * page_size);
-    memset(sbuf, 0, MAX_MESSAGE_SIZE);
-
-    rbuf =
-        (char *) (((unsigned long) rbuf_original + (page_size - 1)) /
-                page_size * page_size);
-    memset(rbuf, 0, MAX_MESSAGE_SIZE);
-
-    cbuf =
-        (char *) (((unsigned long) cbuf_original + (page_size - 1)) /
-                page_size * page_size);
-    memset(cbuf, 0, MAX_MESSAGE_SIZE);
+    size = options.max_message_size;
+    CHECK(posix_memalign((void **)&sbuf, page_size, size));
+    memset(sbuf, 0, size);
+    CHECK(posix_memalign((void **)&rbuf, page_size, size));
+    memset(rbuf, 0, size);
+    CHECK(posix_memalign((void **)&cbuf, page_size, size));
+    memset(cbuf, 0, size);
 
     print_header_get_acc_lat(rank, options.win, options.sync);
 
@@ -123,6 +114,10 @@ int main (int argc, char *argv[])
     }
 
     MPI_CHECK(MPI_Finalize());
+
+    free(sbuf);
+    free(rbuf);
+    free(cbuf);
 
     return EXIT_SUCCESS;
 }

@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Put%s Bi-directional Bandwidth Test"
 /*
- * Copyright (C) 2003-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -9,11 +9,9 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 double  t_start = 0.0, t_end = 0.0;
-char    sbuf_original[ONESBUFSIZE];
-char    rbuf_original[ONESBUFSIZE];
 char    *sbuf=NULL, *rbuf=NULL;
 
 void print_bibw (int, int, double);
@@ -65,7 +63,6 @@ int main (int argc, char *argv[])
                 break;
             case PO_BAD_USAGE:
                 print_bad_usage_message(rank);
-                break;
             case PO_HELP_MESSAGE:
                 usage_one_sided("osu_put_bibw");
                 break;
@@ -153,7 +150,7 @@ void run_put_with_fence(int rank, enum WINDOW type)
 
     int window_size = options.window_size_large;
     for (size = options.min_message_size; size <= options.max_message_size; size = size * 2) {
-        allocate_memory_one_sided(rank, sbuf_original, rbuf_original, &sbuf, &rbuf, &rbuf, size*window_size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size*window_size, type, &win);
 
 #if MPI_VERSION >= 3
         if (type == WIN_DYNAMIC) {
@@ -214,7 +211,7 @@ void run_put_with_pscw(int rank, enum WINDOW type)
 
     int window_size = options.window_size_large;
     for (size = options.min_message_size; size <= options.max_message_size; size = size * 2) {
-        allocate_memory_one_sided(rank, sbuf_original, rbuf_original, &sbuf, &rbuf, &rbuf, size*window_size, type, &win);
+        allocate_memory_one_sided(rank, &sbuf, &rbuf, &sbuf, size*window_size, type, &win);
 
 #if MPI_VERSION >= 3
         if (type == WIN_DYNAMIC) {

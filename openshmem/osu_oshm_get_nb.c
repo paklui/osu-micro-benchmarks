@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Get Test"
 /*
- * Copyright (C) 2002-2016 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -10,7 +10,7 @@
  */
 
 #include <shmem.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 char s_buf_original[MYBUFSIZE];
 char r_buf_original[MYBUFSIZE];
@@ -121,6 +121,8 @@ int main(int argc, char *argv[])
 
         if(myid == 0) 
             {
+                shmem_fence();
+
                 for(i = 0; i < loop + skip; i++) {
                     if(i == skip) t_start = TIME();
 

@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -8,7 +8,7 @@
  * For detailed copyright and licensing information, please refer to the
  * copyright file COPYRIGHT in the top level OMB directory.
  */
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 int
 main (int argc, char *argv[])
@@ -97,8 +97,8 @@ main (int argc, char *argv[])
     
     /* Latency test */
     for(size = options.min_message_size; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-        set_buffer(s_buf, options.accel, 'a', size);
-        set_buffer(r_buf, options.accel, 'b', size);
+        set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
+        set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
         if(size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;

@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Reduce Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <shmem.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 long pSyncRed1[_SHMEM_REDUCE_SYNC_SIZE];
 long pSyncRed2[_SHMEM_REDUCE_SYNC_SIZE];

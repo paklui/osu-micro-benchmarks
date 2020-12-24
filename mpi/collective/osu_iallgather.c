@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Non-blocking Allgather Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -9,7 +9,7 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 int main(int argc, char *argv[])
 {
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     double wait_time = 0.0, init_time = 0.0;
     double init_total = 0.0, wait_total = 0.0;
     options.bench = COLLECTIVE;
-    options.subtype = LAT;
+    options.subtype = NBC;
 
     char *sendbuf = NULL;
     char *recvbuf = NULL;
@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
 
     if (options.max_message_size * numprocs > options.max_mem_limit) {
         if (rank == 0) {
-            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able to run up to %lld bytes.\n"
-                            "Continuing with max message size of %lld bytes\n", 
+            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able to run up to %ld bytes.\n"
+                            "Continuing with max message size of %ld bytes\n", 
                             options.max_message_size, options.max_mem_limit / numprocs);
         }
         options.max_message_size = options.max_mem_limit / numprocs;

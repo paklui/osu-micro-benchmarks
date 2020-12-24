@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Collect Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <shmem.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 long pSyncCollect1[_SHMEM_COLLECT_SYNC_SIZE];
 long pSyncCollect2[_SHMEM_COLLECT_SYNC_SIZE];

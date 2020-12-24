@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU UPC++ Broadcast Latency Test"
 /*
- * Copyright (C) 2002-2015 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -10,7 +10,7 @@
  */
 
 #include <upcxx.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 using namespace std;
 using namespace upcxx;

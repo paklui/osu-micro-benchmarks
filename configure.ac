@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([OSU-Micro-Benchmarks], [5.4.1], [mvapich-discuss@cse.ohio-state.edu])
+AC_INIT([OSU-Micro-Benchmarks], [5.6.1], [mvapich-discuss@cse.ohio-state.edu])
 AC_CONFIG_SRCDIR([mpi/pt2pt/osu_latency.c])
 
 AM_INIT_AUTOMAKE([foreign])
@@ -36,7 +36,7 @@ AC_ARG_WITH([cuda],
             ])
 
 AC_ARG_WITH([cuda-include],
-            [AS_HELP_STRING([--with-cuda-include=@<:@CUDA include path@>:@],
+            [AS_HELP_STRING([--with-cuda-include=@<:@CUDA include path@:>@],
                             [Provide path to CUDA include files])
             ],
             [AS_CASE([$with_cuda_include],
@@ -45,7 +45,7 @@ AC_ARG_WITH([cuda-include],
             ])
 
 AC_ARG_WITH([cuda-libpath],
-            [AS_HELP_STRING([--with-cuda-libpath=@<:@CUDA library path@>:@],
+            [AS_HELP_STRING([--with-cuda-libpath=@<:@CUDA library path@:>@],
                             [Provide path to CUDA library files])
             ],
             [AS_CASE([$with_cuda_libpath],
@@ -134,6 +134,7 @@ AM_CONDITIONAL([OSHM], [test x$oshm_library = xtrue])
 AM_CONDITIONAL([MPI], [test x$mpi_library = xtrue])
 AM_CONDITIONAL([UPC], [test x$upc_compiler = xtrue])
 AM_CONDITIONAL([UPCXX], [test x$upcxx_compiler = xtrue])
+AM_CONDITIONAL([BUILD_USE_PGI], [`$CXX -V 2>&1 | grep pgc++ > /dev/null 2>&1`])
 
 AC_DEFINE([FIELD_WIDTH], [18], [Width of field used to report numbers])
 AC_DEFINE([FLOAT_PRECISION], [2], [Precision of reported numbers])

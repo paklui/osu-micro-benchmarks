@@ -1,7 +1,7 @@
 #define BENCHMARK "OSU MPI%s Bandwidth Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
- * (NBCL), The Ohio State University. 
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
  *
@@ -9,10 +9,10 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
-#include <osu_util.h>
+#include <osu_util_mpi.h>
+#include <stdio.h>
 
-int
-main (int argc, char *argv[])
+int main (int argc, char *argv[])
 {
     int myid, numprocs, i, j;
     int size;
@@ -27,17 +27,38 @@ main (int argc, char *argv[])
     set_benchmark_name("osu_bw");
 
     po_ret = process_options(argc, argv);
-
+    window_size = options.window_size;
+    options.max_message_size = 134217728;
     if (PO_OKAY == po_ret && NONE != options.accel) {
         if (init_accel()) {
             fprintf(stderr, "Error initializing device\n");
             exit(EXIT_FAILURE);
         }
     }
-    
+
     MPI_CHECK(MPI_Init(&argc, &argv));
     MPI_CHECK(MPI_Comm_size(MPI_COMM_WORLD, &numprocs));
     MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myid));
+
+    if (myid==0) {
+#ifdef _ENABLE_CUDA_
+      cudaSetDevice(options.srcgid);
+#endif
+
+#ifdef _ENABLE_ROCM_
+      hipSetDevice(options.srcgid);
+#endif
+    }
+
+    if (myid==1) {
+#ifdef _ENABLE_CUDA_
+      cudaSetDevice(options.dstgid);
+#endif
+
+#ifdef _ENABLE_ROCM_
+      hipSetDevice(options.dstgid);
+#endif
+    }
 
     if (0 == myid) {
         switch (po_ret) {
@@ -97,14 +118,13 @@ main (int argc, char *argv[])
 
     /* Bandwidth test */
     for(size = options.min_message_size; size <= options.max_message_size; size *= 2) {
-        set_buffer(s_buf, options.accel, 'a', size);
-        set_buffer(r_buf, options.accel, 'b', size);
+        set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
+        set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
 
         if(size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
-            window_size = options.window_size_large;
         }
 
         if(myid == 0) {

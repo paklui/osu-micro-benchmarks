@@ -10,7 +10,13 @@ openshmem_PROGRAMS = osu_oshm_get osu_oshm_put osu_oshm_put_mr \
 
 AM_CFLAGS = -I../util
 
-UTILITIES = ../util/osu_util.c osu_util.h
+UTILITIES = ../util/osu_util.c ../util/osu_util.h ../util/osu_util_pgas.c ../util/osu_util_pgas.h
+
+if EMBEDDED_BUILD
+     AM_CPPFLAGS = -I$(top_builddir)/../src/include \
+                  -I${top_srcdir}/util \
+                  -I${top_srcdir}/../src/include
+endif
 
 osu_oshm_get_SOURCES = osu_oshm_get.c $(UTILITIES)
 osu_oshm_put_SOURCES = osu_oshm_put.c $(UTILITIES)

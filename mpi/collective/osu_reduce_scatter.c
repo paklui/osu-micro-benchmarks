@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Reduce_scatter Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -8,7 +8,7 @@
  * For detailed copyright and licensing information, please refer to the
  * copyright file COPYRIGHT in the top level OMB directory.
  */
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 int main(int argc, char *argv[])
 {
@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
 
     if (options.max_message_size > options.max_mem_limit) {
         if (rank == 0) {
-            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able to run up to %lld bytes.\n"
-                            "Continuing with max message size of %lld bytes\n", 
+            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able to run up to %ld bytes.\n"
+                            "Continuing with max message size of %ld bytes\n", 
                             options.max_message_size, options.max_mem_limit);
         }
         options.max_message_size = options.max_mem_limit;
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     }
     set_buffer(sendbuf, options.accel, 1, bufsize);
 
-    bufsize = sizeof(float)*((options.max_message_size/numprocs + 1)/sizeof(float));
+    bufsize = sizeof(float)*(options.max_message_size/numprocs/sizeof(float)+1);
     if (allocate_memory_coll((void**)&recvbuf, bufsize,
                 options.accel)) {
         fprintf(stderr, "Could Not Allocate Memory [rank %d]\n", rank);

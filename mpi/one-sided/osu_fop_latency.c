@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Fetch_and_op%s latency Test"
 /*
- * Copyright (C) 2003-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -9,12 +9,9 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 double  t_start = 0.0, t_end = 0.0;
-char    sbuf_original[ONESBUFSIZE];
-char    rbuf_original[ONESBUFSIZE];
-char    tbuf_original[ONESBUFSIZE];
 uint64_t *sbuf=NULL, *rbuf=NULL, *tbuf=NULL;
 
 void print_latency (int, int);
@@ -65,7 +62,6 @@ int main (int argc, char *argv[])
                 break;
             case PO_BAD_USAGE:
                 print_bad_usage_message(rank);
-                break;
             case PO_HELP_MESSAGE:
                 usage_one_sided("osu_fop_latency");
                 break;
@@ -159,9 +155,8 @@ void run_fop_with_flush_local (int rank, enum WINDOW type)
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    allocate_atomic_memory(rank, sbuf_original, rbuf_original,
-                tbuf_original, NULL, (char **)&sbuf, (char **)&rbuf,
-                (char **)&tbuf, NULL, (char **)&rbuf,  options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
+            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -196,9 +191,8 @@ void run_fop_with_flush (int rank, enum WINDOW type)
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    allocate_atomic_memory(rank, sbuf_original, rbuf_original,
-                tbuf_original, NULL, (char **)&sbuf, (char **)&rbuf,
-                (char **)&tbuf, NULL, (char **)&rbuf,  options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
+            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -230,9 +224,8 @@ void run_fop_with_lock_all (int rank, enum WINDOW type)
     MPI_Aint disp = 0;
     MPI_Win     win;
 
-    allocate_atomic_memory(rank, sbuf_original, rbuf_original,
-                tbuf_original, NULL, (char **)&sbuf, (char **)&rbuf,
-                (char **)&tbuf, NULL, (char **)&rbuf,  options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
+            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -264,9 +257,8 @@ void run_fop_with_lock(int rank, enum WINDOW type)
     MPI_Aint disp = 0;
     MPI_Win     win;
 
-    allocate_atomic_memory(rank, sbuf_original, rbuf_original,
-                tbuf_original, NULL, (char **)&sbuf, (char **)&rbuf,
-                (char **)&tbuf, NULL, (char **)&rbuf,  options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
+            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
 
     if(rank == 0) {
         if (type == WIN_DYNAMIC) {
@@ -298,9 +290,8 @@ void run_fop_with_fence(int rank, enum WINDOW type)
     MPI_Aint disp = 0;
     MPI_Win     win;
 
-    allocate_atomic_memory(rank, sbuf_original, rbuf_original,
-                tbuf_original, NULL, (char **)&sbuf, (char **)&rbuf,
-                (char **)&tbuf, NULL, (char **)&rbuf,  options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
+            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
 
     if (type == WIN_DYNAMIC) {
         disp = disp_remote;
@@ -349,9 +340,8 @@ void run_fop_with_pscw(int rank, enum WINDOW type)
     MPI_Group       comm_group, group;
     MPI_CHECK(MPI_Comm_group(MPI_COMM_WORLD, &comm_group));
 
-    allocate_atomic_memory(rank, sbuf_original, rbuf_original, 
-                tbuf_original, NULL, (char **)&sbuf, (char **)&rbuf, 
-                (char **)&tbuf, NULL, (char **)&rbuf,  options.max_message_size, type, &win);
+    allocate_atomic_memory(rank, (char **)&sbuf, (char **)&rbuf,
+            (char **)&tbuf, NULL, (char **)&rbuf, options.max_message_size, type, &win);
 
     if (type == WIN_DYNAMIC) {
         disp = disp_remote;

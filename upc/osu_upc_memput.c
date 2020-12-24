@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU UPC MEMPUT Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -10,7 +10,7 @@
  */
 
 #include <upc.h>
-#include <../util/osu_util.h>
+#include <../util/osu_util_pgas.h>
 
 int skip = 1000;
 int loop = 10000;

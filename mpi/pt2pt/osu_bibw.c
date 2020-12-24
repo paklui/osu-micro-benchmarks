@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Bi-Directional Bandwidth Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -8,7 +8,7 @@
  * For detailed copyright and licensing information, please refer to the
  * copyright file COPYRIGHT in the top level OMB directory.
  */
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 int main(int argc, char *argv[])
 {
@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     set_benchmark_name("osu_bibw");
     
     po_ret = process_options(argc, argv);
+    window_size = options.window_size;
 
     if (PO_OKAY == po_ret && NONE != options.accel) {
         if (init_accel()) {
@@ -96,13 +97,12 @@ int main(int argc, char *argv[])
     /* Bi-Directional Bandwidth test */
     for(size = options.min_message_size; size <= options.max_message_size; size *= 2) {
         /* touch the data */
-        set_buffer(s_buf, options.accel, 'a', size);
-        set_buffer(r_buf, options.accel, 'b', size);
+        set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
+        set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
         if(size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
-            window_size = options.window_size_large;
         }
 
         if(myid == 0) {

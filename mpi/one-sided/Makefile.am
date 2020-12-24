@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 NVCC = nvcc
-NVCFLAGS = -cuda -maxrregcount 32
+NVCFLAGS = -cuda -maxrregcount 32 -ccbin $(CXX)
 SUFFIXES = .cu .cpp
 .cu.cpp:
 	$(NVCC) $(NVCFLAGS) $(INCLUDES) $(CPPFLAGS) --output-file $@ $<
@@ -15,9 +15,12 @@ endif
 
 AM_CFLAGS = -I../../util
 
-UTILITIES = ../../util/osu_util.c osu_util.h
+UTILITIES = ../../util/osu_util.c ../../util/osu_util.h ../../util/osu_util_mpi.c ../../util/osu_util_mpi.h
 if CUDA_KERNELS
 UTILITIES += ../../util/kernel.cu
+if BUILD_USE_PGI
+AM_CXXFLAGS = --nvcchost --no_preincludes
+endif
 endif
 
 osu_put_latency_SOURCES = osu_put_latency.c $(UTILITIES)
@@ -33,6 +36,7 @@ osu_get_acc_latency_SOURCES = osu_get_acc_latency.c $(UTILITIES)
 if EMBEDDED_BUILD
     AM_LDFLAGS =
     AM_CPPFLAGS = -I$(top_builddir)/../src/include \
+          -I${top_srcdir}/util \
 		  -I${top_srcdir}/../src/include
 if BUILD_PROFILING_LIB
     AM_LDFLAGS += $(top_builddir)/../lib/lib@PMPILIBNAME@.la
@@ -41,5 +45,6 @@ endif
 endif
 
 if OPENACC
-    AM_CFLAGS += -acc
+    AM_CFLAGS += -acc -ta=tesla:nordc
+    AM_CXXFLAGS = -acc -ta=tesla:nordc
 endif

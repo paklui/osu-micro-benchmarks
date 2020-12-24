@@ -93,6 +93,10 @@ upcxx_PROGRAMS = osu_upcxx_allgather$(EXEEXT) \
 	osu_upcxx_gather$(EXEEXT) osu_upcxx_reduce$(EXEEXT) \
 	osu_upcxx_scatter$(EXEEXT) osu_upcxx_async_copy_get$(EXEEXT) \
 	osu_upcxx_async_copy_put$(EXEEXT)
+@EMBEDDED_BUILD_TRUE@am__append_1 = -I$(top_builddir)/../src/include \
+@EMBEDDED_BUILD_TRUE@                  -I${top_srcdir}/util \
+@EMBEDDED_BUILD_TRUE@                  -I${top_srcdir}/../src/include
+
 subdir = upcxx
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -105,7 +109,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(upcxxdir)"
 PROGRAMS = $(upcxx_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am__objects_1 = ../util/osu_util.$(OBJEXT)
+am__objects_1 = ../util/osu_util.$(OBJEXT) \
+	../util/osu_util_pgas.$(OBJEXT)
 am_osu_upcxx_allgather_OBJECTS = osu_upcxx_allgather.$(OBJEXT) \
 	$(am__objects_1)
 osu_upcxx_allgather_OBJECTS = $(am_osu_upcxx_allgather_OBJECTS)
@@ -357,8 +362,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = subdir-objects
 upcxxdir = $(pkglibexecdir)/upcxx
-AM_CPPFLAGS = -I../util
-UTILITIES = ../util/osu_util.c osu_util.h
+AM_CPPFLAGS = -I../util $(am__append_1)
+UTILITIES = ../util/osu_util.c ../util/osu_util.h ../util/osu_util_pgas.c ../util/osu_util_pgas.h
 osu_upcxx_allgather_SOURCES = osu_upcxx_allgather.cpp $(UTILITIES)
 osu_upcxx_alltoall_SOURCES = osu_upcxx_alltoall.cpp $(UTILITIES)
 osu_upcxx_bcast_SOURCES = osu_upcxx_bcast.cpp $(UTILITIES)
@@ -457,6 +462,8 @@ clean-upcxxPROGRAMS:
 	@: > ../util/$(DEPDIR)/$(am__dirstamp)
 ../util/osu_util.$(OBJEXT): ../util/$(am__dirstamp) \
 	../util/$(DEPDIR)/$(am__dirstamp)
+../util/osu_util_pgas.$(OBJEXT): ../util/$(am__dirstamp) \
+	../util/$(DEPDIR)/$(am__dirstamp)
 
 osu_upcxx_allgather$(EXEEXT): $(osu_upcxx_allgather_OBJECTS) $(osu_upcxx_allgather_DEPENDENCIES) $(EXTRA_osu_upcxx_allgather_DEPENDENCIES) 
 	@rm -f osu_upcxx_allgather$(EXEEXT)
@@ -498,6 +505,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@../util/$(DEPDIR)/osu_util.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@../util/$(DEPDIR)/osu_util_pgas.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osu_upcxx_allgather.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osu_upcxx_alltoall.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osu_upcxx_async_copy_get.Po@am__quote@

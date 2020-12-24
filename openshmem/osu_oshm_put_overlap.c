@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU OpenSHMEM Put_nbi Test"
 /*
- * Copyright (C) 2002-2016 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University. 
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -10,7 +10,7 @@
  */
 
 #include <shmem.h>
-#include <osu_util.h>
+#include <osu_util_pgas.h>
 
 #define max(a,b) (a>b?a:b)
 
@@ -177,7 +177,8 @@ int main(int argc, char *argv[])
         
         timer = 0.0;
 		if(myid ==0){
-			for(i=0; i < loop + skip ; i++) {
+			
+            for(i=0; i < loop + skip ; i++) {
 				t_start = TIME();
 				shmem_putmem(r_buf, s_buf, size, 1);
 				shmem_quiet();
@@ -186,6 +187,8 @@ int main(int argc, char *argv[])
 				if(i>=skip){
 					timer += t_stop-t_start;
 				}
+
+                shmem_fence();
 			}
 
 			latency = (timer * 1e6) / loop;
@@ -198,7 +201,7 @@ int main(int argc, char *argv[])
 			test_time = 0.0;
 
 
-				for(i=0; i < loop + skip ; i++) {
+			for(i=0; i < loop + skip ; i++) {
 				t_start = TIME();
 				init_time = TIME();
 				shmem_putmem_nbi(r_buf, s_buf, size, 1);
@@ -220,6 +223,8 @@ int main(int argc, char *argv[])
 					init_total += init_time;
 					wait_total += wait_time;
 				}
+                
+                shmem_fence();
 			}
 		}  
                 

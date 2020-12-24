@@ -1,19 +1,22 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 NVCC = nvcc
-NVCFLAGS = -cuda -maxrregcount 32
+NVCFLAGS = -cuda -maxrregcount 32 -ccbin $(CXX)
 SUFFIXES = .cu .cpp
 .cu.cpp:
 	$(NVCC) $(NVCFLAGS) $(INCLUDES) $(CPPFLAGS) --output-file $@ $<
 
 collectivedir = $(pkglibexecdir)/mpi/collective
-collective_PROGRAMS = osu_alltoallv osu_allgatherv osu_scatterv osu_gatherv osu_reduce_scatter osu_barrier osu_reduce osu_allreduce osu_alltoall osu_bcast osu_gather osu_allgather osu_scatter osu_iallgather osu_ibcast  osu_ialltoall osu_ibarrier osu_igather osu_iscatter osu_iscatterv osu_igatherv osu_iallgatherv osu_ialltoallv osu_ialltoallw
+collective_PROGRAMS = osu_alltoallv osu_allgatherv osu_scatterv osu_gatherv osu_reduce_scatter osu_barrier osu_reduce osu_allreduce osu_alltoall osu_bcast osu_gather osu_allgather osu_scatter osu_iallgather osu_ibcast  osu_ialltoall osu_ibarrier osu_igather osu_iscatter osu_iscatterv osu_igatherv osu_iallgatherv osu_ialltoallv osu_ialltoallw osu_ireduce osu_iallreduce
 
 AM_CFLAGS = -I../../util
 
-UTILITIES = ../../util/osu_util.c osu_util.h
+UTILITIES = ../../util/osu_util.c ../../util/osu_util.h ../../util/osu_util_mpi.c ../../util/osu_util_mpi.h
 if CUDA_KERNELS
 UTILITIES += ../../util/kernel.cu
+if BUILD_USE_PGI
+AM_CXXFLAGS = --nvcchost --no_preincludes
+endif
 endif
 
 osu_allgatherv_SOURCES = osu_allgatherv.c $(UTILITIES)
@@ -40,10 +43,13 @@ osu_iallgatherv_SOURCES = osu_iallgatherv.c $(UTILITIES)
 osu_scatter_SOURCES = osu_scatter.c $(UTILITIES)
 osu_iscatter_SOURCES = osu_iscatter.c $(UTILITIES)
 osu_iscatterv_SOURCES = osu_iscatterv.c $(UTILITIES)
+osu_ireduce_SOURCES = osu_ireduce.c $(UTILITIES)
+osu_iallreduce_SOURCES = osu_iallreduce.c $(UTILITIES)
 
 if EMBEDDED_BUILD
     AM_LDFLAGS =
     AM_CPPFLAGS = -I$(top_builddir)/../src/include \
+          -I${top_srcdir}/util \
 		  -I${top_srcdir}/../src/include
 if BUILD_PROFILING_LIB
     AM_LDFLAGS += $(top_builddir)/../lib/lib@PMPILIBNAME@.la
@@ -52,6 +58,6 @@ endif
 endif
 
 if OPENACC
-    AM_CFLAGS += -acc
-    AM_CXXFLAGS = -acc
+    AM_CFLAGS += -acc -ta=tesla:nordc
+    AM_CXXFLAGS = -acc -ta=tesla:nordc
 endif

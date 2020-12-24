@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI Multi Latency Test"
 /*
- * Copyright (C) 2002-2018 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -9,7 +9,7 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
-#include <osu_util.h>
+#include <osu_util_mpi.h>
 
 char *s_buf, *r_buf;
 
@@ -17,7 +17,6 @@ static void multi_latency(int rank, int pairs);
 
 int main(int argc, char* argv[])
 {
-    unsigned long align_size = sysconf(_SC_PAGESIZE);
     int rank, nprocs; 
     int pairs;
     int po_ret = 0;
@@ -81,22 +80,14 @@ int main(int argc, char* argv[])
             break;
     }
 
-    if (posix_memalign((void**)&s_buf, align_size, options.max_message_size)) {
-        fprintf(stderr, "Error allocating host memory\n");
-        return EXIT_FAILURE;
+    if (allocate_memory_pt2pt_mul(&s_buf, &r_buf, rank, pairs)) {
+        /* Error allocating memory */
+        MPI_CHECK(MPI_Finalize());
+        exit(EXIT_FAILURE);
     }
-
-    if (posix_memalign((void**)&r_buf, align_size, options.max_message_size)) {
-        fprintf(stderr, "Error allocating host memory\n");
-        return EXIT_FAILURE;
-    }
-
-    memset(s_buf, 0, options.max_message_size);
-    memset(r_buf, 0, options.max_message_size);
 
     if(rank == 0) {
-        fprintf(stdout, HEADER);
-        fprintf(stdout, "%-*s%*s\n", 10, "# Size", FIELD_WIDTH, "Latency (us)");
+        print_header(rank, LAT);
         fflush(stdout);
     }
 
@@ -108,8 +99,7 @@ int main(int argc, char* argv[])
 
     MPI_CHECK(MPI_Finalize());
 
-    free(r_buf);
-    free(s_buf);
+    free_memory_pt2pt_mul(s_buf, r_buf, rank, pairs);
 
     return EXIT_SUCCESS;
 }
