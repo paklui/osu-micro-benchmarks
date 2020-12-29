@@ -83,13 +83,13 @@ int main (int argc, char *argv[])
     assert(page_size <= MAX_ALIGNMENT);
     
     size = options.max_message_size;
-    CHECK(posix_memalign((void **)&sbuf, page_size, size));
+    posix_memalign((void **)&sbuf, page_size, size);
     memset(sbuf, 0, size);
     if (options.win != WIN_ALLOCATE) {
-        CHECK(posix_memalign((void **)&rbuf, page_size, size));
+        posix_memalign((void **)&rbuf, page_size, size);
         memset(rbuf, 0, size);
     }
-    CHECK(posix_memalign((void **)&cbuf, page_size, size));
+    posix_memalign((void **)&cbuf, page_size, size);
     memset(cbuf, 0, size);
 
     print_header_get_acc_lat(rank, options.win, options.sync);

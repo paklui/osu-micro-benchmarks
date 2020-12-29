@@ -84,7 +84,7 @@ void set_device_memory (void * ptr, int data, size_t size)
 #endif
 #ifdef _ENABLE_ROCM_
         case ROCM:
-            ROCM_CHECK(hipMemset(ptr, data, size));
+            hipMemset(ptr, data, size);
             break;
 #endif
         default:
@@ -109,7 +109,7 @@ int free_device_buffer (void * buf)
 #endif
 #ifdef _ENABLE_ROCM_
         case ROCM:
-            ROCM_CHECK(hipFree(buf));
+            hipFree(buf);
             break;
 #endif
         default:
@@ -775,7 +775,7 @@ void set_buffer_pt2pt (void * buffer, int rank, enum accel_type type, int data, 
 #endif
 #ifdef _ENABLE_ROCM_
             {
-                ROCM_CHECK(hipMemset(buffer, data, size));
+                hipMemset(buffer, data, size);
             }
 #endif
             break;
@@ -808,7 +808,7 @@ void set_buffer (void * buffer, enum accel_type type, int data, size_t size)
             break;
         case ROCM:
 #ifdef _ENABLE_ROCM_
-            ROCM_CHECK(hipMemset(buffer, data, size));
+            hipMemset(buffer, data, size);
 #endif
             break;
     }
@@ -844,7 +844,7 @@ int allocate_memory_coll (void ** buffer, size_t size, enum accel_type type)
 #endif
 #ifdef _ENABLE_ROCM_
         case ROCM:
-            ROCM_CHECK(hipMalloc(buffer, size));
+            hipMalloc(buffer, size);
             return 0;
 #endif
         default:
@@ -871,7 +871,7 @@ int allocate_device_buffer (char ** buffer)
 #endif
 #ifdef _ENABLE_ROCM_
         case ROCM:
-             ROCM_CHECK(hipMalloc((void **)buffer, options.max_message_size));
+             hipMalloc((void **)buffer, options.max_message_size);
             break;
 #endif
         default:
@@ -904,7 +904,7 @@ int allocate_device_buffer_one_sided (char ** buffer, size_t size)
 #endif
 #ifdef _ENABLE_ROCM_
         case ROCM:
-             ROCM_CHECK(hipMalloc((void **)buffer, size));
+             hipMalloc((void **)buffer, size);
             break;
 #endif
         default:
@@ -1108,16 +1108,16 @@ void allocate_memory_one_sided(int rank, char **user_buf,
     /* always allocate device buffers explicitly since most MPI libraries do not
      * support allocating device buffers during window creation */
     if (mem_on_dev) {
-        CHECK(allocate_device_buffer_one_sided(user_buf, size));
+        allocate_device_buffer_one_sided(user_buf, size);
         set_device_memory(*user_buf, 'a', size);
-        CHECK(allocate_device_buffer_one_sided(win_base, size));
+        allocate_device_buffer_one_sided(win_base, size);
         set_device_memory(*win_base, 'a', size);
     } else {
-        CHECK(posix_memalign((void **)user_buf, page_size, size));
+        posix_memalign((void **)user_buf, page_size, size);
         memset(*user_buf, 'a', size);
         /* only explicitly allocate buffer for win_base when NOT using MPI_Win_allocate */
         if (type != WIN_ALLOCATE) {
-            CHECK(posix_memalign((void **)win_base, page_size, size));
+            posix_memalign((void **)win_base, page_size, size);
             memset(*win_base, 'a', size);
         }
     }
@@ -1173,7 +1173,7 @@ void free_buffer (void * buffer, enum accel_type type)
             break;
         case ROCM:
 #ifdef _ENABLE_ROCM_
-            ROCM_CHECK(hipFree(buffer));
+            hipFree(buffer);
 #endif
             break;
     }
@@ -1267,10 +1267,10 @@ int init_accel (void)
 #ifdef _ENABLE_ROCM_
         case ROCM:
             if (local_rank >= 0) {
-                ROCM_CHECK(hipGetDeviceCount(&dev_count));
+                hipGetDeviceCount(&dev_count);
                 dev_id = local_rank % dev_count;
             }
-            ROCM_CHECK(hipSetDevice(dev_id));
+            hipSetDevice(dev_id);
             break;
 #endif
         default:
@@ -1302,7 +1302,7 @@ int cleanup_accel (void)
 #endif
 #ifdef _ENABLE_ROCM_
         case ROCM:
-            ROCM_CHECK(hipDeviceReset());
+            hipDeviceReset();
             break;
 #endif
         default:
@@ -1592,27 +1592,27 @@ void allocate_atomic_memory(int rank,
     }
 
     if (mem_on_dev) {
-        CHECK(allocate_device_buffer(sbuf));
+        allocate_device_buffer(sbuf);
         set_device_memory(*sbuf, 'a', size);
-        CHECK(allocate_device_buffer(win_base));
+        allocate_device_buffer(win_base);
         set_device_memory(*win_base, 'b', size);
-        CHECK(allocate_device_buffer(tbuf));
+        allocate_device_buffer(tbuf);
         set_device_memory(*tbuf, 'c', size);
         if (cbuf != NULL) {
-            CHECK(allocate_device_buffer(cbuf));
+            allocate_device_buffer(cbuf);
             set_device_memory(*cbuf, 'a', size);
         }
     } else {
-        CHECK(posix_memalign((void **)sbuf, page_size, size));
+        posix_memalign((void **)sbuf, page_size, size);
         memset(*sbuf, 'a', size);
         if (type != WIN_ALLOCATE) {
-            CHECK(posix_memalign((void **)win_base, page_size, size));
+            posix_memalign((void **)win_base, page_size, size);
             memset(*win_base, 'b', size);
         }
-        CHECK(posix_memalign((void **)tbuf, page_size, size));
+        posix_memalign((void **)tbuf, page_size, size);
         memset(*tbuf, 'c', size);
         if (cbuf != NULL) {
-            CHECK(posix_memalign((void **)cbuf, page_size, size));
+            posix_memalign((void **)cbuf, page_size, size);
             memset(*cbuf, 'a', size);
         }
     }
