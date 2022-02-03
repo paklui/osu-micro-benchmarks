@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Get_accumulate latency Test"
 /*
- * Copyright (C) 2003-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -42,8 +42,8 @@ int main (int argc, char *argv[])
     MPI_CHECK(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
     MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
 
-    if(nprocs != 2) {
-        if(rank == 0) {
+    if (nprocs != 2) {
+        if (rank == 0) {
             fprintf(stderr, "This test requires exactly two processes\n");
         }
         MPI_CHECK(MPI_Finalize());
@@ -83,18 +83,18 @@ int main (int argc, char *argv[])
     assert(page_size <= MAX_ALIGNMENT);
     
     size = options.max_message_size;
-    posix_memalign((void **)&sbuf, page_size, size);
+    CHECK(posix_memalign((void **)&sbuf, page_size, size));
     memset(sbuf, 0, size);
     if (options.win != WIN_ALLOCATE) {
-        posix_memalign((void **)&rbuf, page_size, size);
+        CHECK(posix_memalign((void **)&rbuf, page_size, size));
         memset(rbuf, 0, size);
     }
-    posix_memalign((void **)&cbuf, page_size, size);
+    CHECK(posix_memalign((void **)&cbuf, page_size, size));
     memset(cbuf, 0, size);
 
     print_header_get_acc_lat(rank, options.win, options.sync);
 
-    switch (options.sync){
+    switch (options.sync) {
         case LOCK:
             run_get_acc_with_lock(rank, options.win);
             break;
@@ -141,12 +141,12 @@ void run_get_acc_with_flush(int rank, enum WINDOW type)
             disp = sdisp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
              options.iterations = options.iterations_large;
              options.skip = options.skip_large;
         }
 
-        if(rank == 0) {
+        if (rank == 0) {
             MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 1, 0, win));
             for (i = 0; i <  options.skip +  options.iterations; i++) {
                 if (i ==  options.skip) {
@@ -182,12 +182,12 @@ void run_get_acc_with_flush_local(int rank, enum WINDOW type)
             disp = sdisp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
              options.skip = options.skip_large;
         }
 
-        if(rank == 0) {
+        if (rank == 0) {
             MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 1, 0, win));
             for (i = 0; i <  options.skip +  options.iterations; i++) {
                 if (i ==  options.skip) {
@@ -223,12 +223,12 @@ void run_get_acc_with_lock_all(int rank, enum WINDOW type)
             disp = sdisp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
              options.iterations = options.iterations_large;
              options.skip = options.skip_large;
         }
 
-        if(rank == 0) {
+        if (rank == 0) {
             for (i = 0; i <  options.skip +  options.iterations; i++) {
                 if (i ==  options.skip) {
                     t_start = MPI_Wtime ();
@@ -263,12 +263,12 @@ void run_get_acc_with_lock(int rank, enum WINDOW type)
             disp = sdisp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
              options.iterations = options.iterations_large;
              options.skip = options.skip_large;
         }
 
-        if(rank == 0) {
+        if (rank == 0) {
             for (i = 0; i <  options.skip +  options.iterations; i++) {
                 if (i ==  options.skip) {
                     t_start = MPI_Wtime ();
@@ -303,14 +303,14 @@ void run_get_acc_with_fence(int rank, enum WINDOW type)
             disp = sdisp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
              options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-        if(rank == 0) {
+        if (rank == 0) {
             for (i = 0; i <  options.skip +  options.iterations; i++) {
                 if (i ==  options.skip) {
                     t_start = MPI_Wtime ();
@@ -424,12 +424,12 @@ void allocate_memory_get_acc_lat(int rank, char *rbuf, int size, enum WINDOW typ
 {
     MPI_Status  reqstat;
 
-    switch (type){
+    switch (type) {
         case WIN_DYNAMIC:
             MPI_CHECK(MPI_Win_create_dynamic(MPI_INFO_NULL, MPI_COMM_WORLD, win));
             MPI_CHECK(MPI_Win_attach(*win, (void *)rbuf, size));
             MPI_CHECK(MPI_Get_address(rbuf, &sdisp_local));
-            if(rank == 0){
+            if (rank == 0) {
                 MPI_CHECK(MPI_Send(&sdisp_local, 1, MPI_AINT, 1, 1, MPI_COMM_WORLD));
                 MPI_CHECK(MPI_Recv(&sdisp_remote, 1, MPI_AINT, 1, 1, MPI_COMM_WORLD, &reqstat));
             }
@@ -449,7 +449,7 @@ void allocate_memory_get_acc_lat(int rank, char *rbuf, int size, enum WINDOW typ
 
 void print_header_get_acc_lat (int rank, enum WINDOW win, enum SYNC sync)
 {
-    if(rank == 0) {
+    if (rank == 0) {
         fprintf(stdout, HEADER);
         fprintf(stdout, "# Window creation: %s\n",
                 win_info[win]);

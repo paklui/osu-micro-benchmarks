@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Non-blocking Barrier Latency Test"
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -63,8 +63,8 @@ int main(int argc, char *argv[])
             break;
     }
 
-    if(numprocs < 2) {
-        if(rank == 0) {
+    if (numprocs < 2) {
+        if (rank == 0) {
             fprintf(stderr, "This test requires at least two processes\n");
         }
 
@@ -81,13 +81,13 @@ int main(int argc, char *argv[])
 
     allocate_host_arrays();
 
-    for(i=0; i < options.iterations + options.skip ; i++) {
+    for (i=0; i < options.iterations + options.skip ; i++) {
         t_start = MPI_Wtime();
         MPI_CHECK(MPI_Ibarrier(MPI_COMM_WORLD, &request));
         MPI_CHECK(MPI_Wait(&request,&status));
         t_stop = MPI_Wtime();
 
-        if(i>=options.skip){
+        if (i>=options.skip) {
             timer+=t_stop-t_start;
         }
     }
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     init_total = 0.0; wait_total = 0.0;
     test_time = 0.0, test_total = 0.0;
 
-    for(i=0; i < options.iterations + options.skip ; i++) {
+    for (i=0; i < options.iterations + options.skip ; i++) {
             t_start = MPI_Wtime();
 
             init_time = MPI_Wtime();
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 
             t_stop = MPI_Wtime();
 
-            if(i>=options.skip){
+            if (i>=options.skip) {
                 timer += t_stop-t_start;
                 tcomp_total += tcomp;
                 test_total += test_time;

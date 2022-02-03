@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Non-blocking Gather Latency Test"
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
             break;
     }
 
-    if(numprocs < 2) {
+    if (numprocs < 2) {
         if (rank == 0) {
             fprintf(stderr, "This test requires at least two processes\n");
         }
@@ -100,15 +100,15 @@ int main(int argc, char *argv[])
 
     print_preamble_nbc(rank);
 
-    for(size=options.min_message_size; size <= options.max_message_size; size *= 2) {
-        if(size > LARGE_MESSAGE_SIZE) {
+    for (size=options.min_message_size; size <= options.max_message_size; size *= 2) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
         }
 
         timer = 0.0;
 
-        for(i=0; i < options.iterations + options.skip ; i++) {
+        for (i=0; i < options.iterations + options.skip ; i++) {
             t_start = MPI_Wtime();
             MPI_CHECK(MPI_Igather(sendbuf, size, MPI_CHAR,
                         recvbuf, size, MPI_CHAR,
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 
             t_stop = MPI_Wtime();
 
-            if(i>=options.skip){
+            if (i>=options.skip) {
                 timer += t_stop-t_start;
             }
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 	    test_time = 0.0, test_total = 0.0;
 
 	    /* for loop with dummy_compute */
-        for(i=0; i < options.iterations + options.skip ; i++) {
+        for (i=0; i < options.iterations + options.skip ; i++) {
             t_start = MPI_Wtime();
 
             init_time = MPI_Wtime();
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 
             t_stop = MPI_Wtime();
 
-            if(i>=options.skip){
+            if (i>=options.skip) {
                 timer += t_stop-t_start;
                 tcomp_total += tcomp;
                 test_total += test_time;
@@ -176,9 +176,9 @@ int main(int argc, char *argv[])
     }
 
     if (0 == rank) {
-        free_buffer(sendbuf, options.accel);
+        free_buffer(recvbuf, options.accel);
     }
-    free_buffer(recvbuf, options.accel);
+    free_buffer(sendbuf, options.accel);
     MPI_CHECK(MPI_Finalize());
 
     if (NONE != options.accel) {

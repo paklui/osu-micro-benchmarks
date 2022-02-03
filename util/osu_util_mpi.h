@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -42,6 +42,27 @@ void free_device_arrays();
 #endif
 
 /*
+ * Managed Memory
+ */
+#ifdef _ENABLE_CUDA_KERNEL_
+void touch_managed(char *buf, size_t length);
+void launch_empty_kernel(char *buf, size_t length);
+void create_cuda_stream();
+void destroy_cuda_stream();
+void synchronize_device();
+void synchronize_stream();
+void prefetch_data(char *buf, size_t length, int devid);
+void create_cuda_event();
+void destroy_cuda_event();
+void event_record_start();
+void event_record_stop();
+void event_elapsed_time(float *);
+extern void call_touch_managed_kernel(char *buf, size_t length, cudaStream_t *stream);
+extern void call_empty_kernel(char *buf, size_t length, cudaStream_t *stream);
+#define PREFETCH_THRESHOLD 131072
+#endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
+
+/*
  * Print Information
  */
 void print_bad_usage_message (int rank);
@@ -50,7 +71,10 @@ void print_version_message (int rank);
 void print_preamble (int rank);
 void print_preamble_nbc (int rank);
 void print_stats (int rank, int size, double avg, double min, double max);
-void print_stats_nbc (int rank, int size, double ovrl, double cpu, double comm,
+void print_stats_validate(int rank, int size, double avg, double min, double max,
+                          int errors);
+void print_stats_nbc (int rank, int size, double ovrl, double cpu, double avg_comm,
+                      double min_comm, double max_comm,
                       double wait, double init, double test);
 
 /*
@@ -60,6 +84,10 @@ int allocate_memory_coll (void ** buffer, size_t size, enum accel_type type);
 void free_buffer (void * buffer, enum accel_type type);
 void set_buffer (void * buffer, enum accel_type type, int data, size_t size);
 void set_buffer_pt2pt (void * buffer, int rank, enum accel_type type, int data, size_t size);
+void set_buffer_float (float * buffer, int is_send_buf, size_t size, int iter,
+        enum accel_type type);
+void set_buffer_char (char * buffer, int is_send_buf, size_t size, int rank, int num_procs,
+        enum accel_type type);
 
 /*
  * CUDA Context Management
@@ -74,7 +102,9 @@ extern MPI_Request recv_request[MAX_REQ_NUM];
 
 void usage_mbw_mr();
 int allocate_memory_pt2pt (char **sbuf, char **rbuf, int rank);
+int allocate_memory_pt2pt_size (char **sbuf, char **rbuf, int rank, size_t size);
 int allocate_memory_pt2pt_mul (char **sbuf, char **rbuf, int rank, int pairs);
+int allocate_memory_pt2pt_mul_size (char **sbuf, char **rbuf, int rank, int pairs, size_t size);
 void print_header_pt2pt (int rank, int type);
 void free_memory (void *sbuf, void *rbuf, int rank);
 void free_memory_pt2pt_mul (void *sbuf, void *rbuf, int rank, int pairs);
@@ -97,3 +127,12 @@ void allocate_atomic_memory(int rank,
         char **sbuf, char **tbuf, char **cbuf,
         char **win_base, size_t size, enum WINDOW type, MPI_Win *win);
 void free_atomic_memory (void *sbuf, void *win_baseptr, void *tbuf, void *cbuf, enum WINDOW type, MPI_Win win, int rank);
+int omb_get_local_rank();
+
+/*
+ * Validation Functions
+ */
+int validate_reduction(float * buffer, size_t size, int iter, int num_procs,
+        enum accel_type type);
+int validate_alltoall(char * buffer, size_t size, int rank, int num_procs, int iter,
+        enum accel_type type);

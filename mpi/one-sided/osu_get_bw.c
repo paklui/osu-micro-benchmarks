@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Get%s Bandwidth Test"
 /*
- * Copyright (C) 2003-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -92,8 +92,8 @@ int main (int argc, char *argv[])
             break;
     }
 
-    if(nprocs != 2) {
-        if(rank == 0) {
+    if (nprocs != 2) {
+        if (rank == 0) {
             fprintf(stderr, "This test requires exactly two processes\n");
         }
 
@@ -104,7 +104,7 @@ int main (int argc, char *argv[])
 
     print_header_one_sided(rank, options.win, options.sync);
 
-    switch (options.sync){
+    switch (options.sync) {
         case LOCK:
             run_get_with_lock(rank, options.win);
             break;
@@ -167,7 +167,7 @@ void run_get_with_flush_local (int rank, enum WINDOW type)
             disp = disp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }
@@ -177,7 +177,7 @@ void run_get_with_flush_local (int rank, enum WINDOW type)
                 if (i == options.skip) {
                     t_start = MPI_Wtime ();
                 }
-                for(j = 0; j < window_size; j++) {
+                for (j = 0; j < window_size; j++) {
                     MPI_CHECK(MPI_Get(rbuf+(j*size), size, MPI_CHAR, 1, disp + (j * size), size, MPI_CHAR,
                             win));
                 }
@@ -212,7 +212,7 @@ void run_get_with_flush (int rank, enum WINDOW type)
             disp = disp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }
@@ -223,7 +223,7 @@ void run_get_with_flush (int rank, enum WINDOW type)
                 if (i == options.skip) {
                     t_start = MPI_Wtime ();
                 }
-                for(j = 0; j < window_size; j++) {
+                for (j = 0; j < window_size; j++) {
                     MPI_CHECK(MPI_Get(rbuf+(j*size), size, MPI_CHAR, 1, disp + (j * size), size, MPI_CHAR,
                             win));
                 }
@@ -258,7 +258,7 @@ void run_get_with_lock_all (int rank, enum WINDOW type)
             disp = disp_remote;
         }
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }
@@ -268,7 +268,7 @@ void run_get_with_lock_all (int rank, enum WINDOW type)
                     t_start = MPI_Wtime ();
                 }
                 MPI_CHECK(MPI_Win_lock_all(0, win));
-                for(j = 0; j < window_size; j++) {
+                for (j = 0; j < window_size; j++) {
                     MPI_CHECK(MPI_Get(rbuf+(j*size), size, MPI_CHAR, 1, disp + (j * size), size, MPI_CHAR,
                             win));
                 }
@@ -305,7 +305,7 @@ void run_get_with_lock(int rank, enum WINDOW type)
         }
 #endif
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }
@@ -315,7 +315,7 @@ void run_get_with_lock(int rank, enum WINDOW type)
                     t_start = MPI_Wtime ();
                 }
                 MPI_CHECK(MPI_Win_lock(MPI_LOCK_SHARED, 1, 0, win));
-                for(j = 0; j < window_size; j++) {
+                for (j = 0; j < window_size; j++) {
                     MPI_CHECK(MPI_Get(rbuf+(j*size), size, MPI_CHAR, 1, disp + (j * size), size, MPI_CHAR,
                             win));
                 }
@@ -351,20 +351,20 @@ void run_get_with_fence(int rank, enum WINDOW type)
         }
 #endif
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
         }
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-        if(rank == 0) {
+        if (rank == 0) {
             for (i = 0; i < options.skip + options.iterations; i++) {
                 if (i == options.skip) {
                     t_start = MPI_Wtime ();
                 }
                 MPI_CHECK(MPI_Win_fence(0, win));
-                for(j = 0; j < window_size; j++) {
+                for (j = 0; j < window_size; j++) {
                     MPI_CHECK(MPI_Get(rbuf+(j*size), size, MPI_CHAR, 1, disp + (j * size), size, MPI_CHAR,
                             win));
                 }
@@ -423,7 +423,7 @@ void run_get_with_pscw(int rank, enum WINDOW type)
                 if (i == options.skip) {
                     t_start = MPI_Wtime ();
                 }
-                for(j = 0; j < window_size; j++) {
+                for (j = 0; j < window_size; j++) {
                     MPI_CHECK(MPI_Get(rbuf + j*size, size, MPI_CHAR, 1, disp + (j*size), size, MPI_CHAR,
                             win));
                 }

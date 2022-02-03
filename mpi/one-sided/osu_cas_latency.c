@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI_Compare_and_swap%s latency Test"
 /*
- * Copyright (C) 2003-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2003-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.            
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -88,8 +88,8 @@ int main (int argc, char *argv[])
             break;
     }
 
-    if(nprocs != 2) {
-        if(rank == 0) {
+    if (nprocs != 2) {
+        if (rank == 0) {
             fprintf(stderr, "This test requires exactly two processes\n");
         }
         MPI_CHECK(MPI_Finalize());
@@ -98,7 +98,7 @@ int main (int argc, char *argv[])
 
     print_header_one_sided(rank, options.win, options.sync);
 
-    switch (options.sync){
+    switch (options.sync) {
         case LOCK:
             run_cas_with_lock(rank, options.win);
             break;
@@ -153,7 +153,7 @@ void run_cas_with_flush (int rank, enum WINDOW type)
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    if(rank == 0) {
+    if (rank == 0) {
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
         }
@@ -187,7 +187,7 @@ void run_cas_with_lock_all (int rank, enum WINDOW type)
             (char **)&tbuf, (char **) &cbuf, (char **)&win_base,
             options.max_message_size, type, &win);
 
-    if(rank == 0) {
+    if (rank == 0) {
 
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
@@ -224,7 +224,7 @@ void run_cas_with_flush_local (int rank, enum WINDOW type)
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    if(rank == 0) {
+    if (rank == 0) {
 
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
@@ -259,7 +259,7 @@ void run_cas_with_lock(int rank, enum WINDOW type)
             (char **)&tbuf, (char **) &cbuf, (char **)&win_base,
             options.max_message_size, type, &win);
 
-    if(rank == 0) {
+    if (rank == 0) {
 
         if (type == WIN_DYNAMIC) {
             disp = disp_remote;
@@ -298,7 +298,7 @@ void run_cas_with_fence(int rank, enum WINDOW type)
     if (type == WIN_DYNAMIC) {
         disp = disp_remote;
     }
-    if(rank == 0) {
+    if (rank == 0) {
         for (i = 0; i < options.skip + options.iterations; i++) {
             if (i == options.skip) {
                 t_start = MPI_Wtime ();

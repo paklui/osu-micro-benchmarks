@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([OSU-Micro-Benchmarks], [5.7], [mvapich-discuss@cse.ohio-state.edu])
+AC_INIT([OSU-Micro-Benchmarks], [5.8], [mvapich-discuss@cse.ohio-state.edu])
 AC_CONFIG_SRCDIR([mpi/pt2pt/osu_latency.c])
 
 AM_INIT_AUTOMAKE([foreign])
@@ -58,6 +58,28 @@ AC_ARG_WITH([cuda-libpath],
                      [yes|no], [],
                      [LDFLAGS="-L$with_cuda_libpath -Wl,-rpath=$with_cuda_libpath $LDFLAGS"])
             ])
+
+
+AC_ARG_ENABLE([ncclomb],
+            [AS_HELP_STRING([--enable-ncclomb],
+                [Enable NCCL benchmarks (default is no). Specify
+                --enable-ncclomb to enable NCCL benchmarks support])
+            ],
+            [],
+            [enable_ncclomb=no])
+
+if test "x$enable_ncclomb" = "xyes"; then
+    AC_ARG_WITH([nccl],
+                [AS_HELP_STRING([--with-nccl=@<:@NCCL installation path@:>@],
+                                [Provide path to NCCL installation])
+                ],
+                [AS_CASE([$with_nccl],
+                         [yes|no], [],
+                         [CPPFLAGS="-I$with_nccl/include $CPPFLAGS"
+                          LDFLAGS="-L$with_nccl/lib -Wl,-rpath=$with_nccl/lib -lnccl $LDFLAGS"])
+                ])
+fi
+
 
 AC_ARG_ENABLE([rocm],
               [AS_HELP_STRING([--enable-rocm],
@@ -121,6 +143,17 @@ AM_CONDITIONAL([BUILD_PROFILING_LIB], [test x"$with_plib" = xyes])
 AC_SUBST([PMPILIBNAME], [$PMILIBNAME])
 AC_SUBST([MPILIBNAME], [$MPILIBNAME])
 
+
+AS_IF([test "x$enable_ncclomb" = xyes], [
+       AC_CHECK_HEADERS([nccl.h], [],
+                      [AC_MSG_ERROR([cannot include nccl.h])])
+       AC_SEARCH_LIBS([ncclGetUniqueId], [nccl], [],
+                      [AC_MSG_ERROR([cannot link with -lnccl])])
+       AC_CHECK_FUNC([ncclSend], [nccl_pt2pt=true], 
+                     [AC_MSG_WARN([NCCL version >= 2.7 required for point-to-point support. Disabling building NCCL point-to-point benchmarks.])])
+       AC_DEFINE([_ENABLE_NCCL_], [1], [Enable NCCL])
+      ])
+
 AS_IF([test "x$enable_openacc" = xyes], [
        AC_CHECK_HEADERS([openacc.h], [],
                         [AC_MSG_ERROR([cannot include openacc.h])])
@@ -160,6 +193,8 @@ AS_IF([test "x$oshm_13_library" = xtrue], [
 AM_CONDITIONAL([MPI2_LIBRARY], [test x$mpi2_library = xtrue])
 AM_CONDITIONAL([MPI3_LIBRARY], [test x$mpi3_library = xtrue])
 AM_CONDITIONAL([CUDA], [test x$build_cuda = xyes])
+AM_CONDITIONAL([NCCL], [test x$enable_ncclomb = xyes])
+AM_CONDITIONAL([NCCL_PT2PT], [test x$nccl_pt2pt = xtrue])
 AM_CONDITIONAL([CUDA_KERNELS], [test x$build_cuda_kernels = xyes])
 AM_CONDITIONAL([OPENACC], [test x$enable_openacc = xyes])
 AM_CONDITIONAL([ROCM], [test x$enable_rocm = xyes])
@@ -173,6 +208,6 @@ AC_DEFINE([FIELD_WIDTH], [18], [Width of field used to report numbers])
 AC_DEFINE([FLOAT_PRECISION], [2], [Precision of reported numbers])
 
 AC_CONFIG_FILES([Makefile mpi/Makefile mpi/pt2pt/Makefile mpi/startup/Makefile
-                 mpi/one-sided/Makefile mpi/collective/Makefile
-                 openshmem/Makefile upc/Makefile upcxx/Makefile])
+                 mpi/one-sided/Makefile mpi/collective/Makefile openshmem/Makefile 
+                 upc/Makefile upcxx/Makefile nccl/Makefile nccl/collective/Makefile nccl/pt2pt/Makefile])
 AC_OUTPUT

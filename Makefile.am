@@ -24,4 +24,8 @@ if UPCXX
     SUBDIRS += upcxx
 endif
 
+if NCCL
+    SUBDIRS += nccl
+endif
+
 EXTRA_DIST = README CHANGES COPYRIGHT

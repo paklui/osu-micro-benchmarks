@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s Reduce_scatter Latency Test"
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     size_t bufsize;
 
     set_header(HEADER);
-    set_benchmark_name("osu_scatter");
+    set_benchmark_name("osu_reduce_scatter");
 
     options.bench = COLLECTIVE;
     options.subtype = LAT;
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
             break;
     }
 
-    if(numprocs < 2) {
+    if (numprocs < 2) {
         if (rank == 0) {
             fprintf(stderr, "This test requires at least two processes\n");
         }
@@ -102,9 +102,9 @@ int main(int argc, char *argv[])
 
     print_preamble(rank);
 
-    for(size=options.min_message_size; size*sizeof(float) <= options.max_message_size; size *= 2) {
+    for (size=options.min_message_size; size*sizeof(float) <= options.max_message_size; size *= 2) {
 
-        if(size > LARGE_MESSAGE_SIZE) {
+        if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
         }
@@ -113,14 +113,14 @@ int main(int argc, char *argv[])
         portion=size/numprocs;
         remainder=size%numprocs;
 
-        for (i=0; i<numprocs; i++){
+        for (i=0; i<numprocs; i++) {
             recvcounts[i]=0;
-            if(size<numprocs){
-                if(i<size)
+            if (size<numprocs) {
+                if (i<size)
                     recvcounts[i]=1;
             }
             else{
-                if((remainder!=0) && (i<remainder)){
+                if ((remainder!=0) && (i<remainder)) {
                     recvcounts[i]+=1;
                 }
                 recvcounts[i]+=portion;
@@ -129,12 +129,13 @@ int main(int argc, char *argv[])
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
         timer=0.0;
-        for(i=0; i < options.iterations + options.skip ; i++) {
+        for (i=0; i < options.iterations + options.skip ; i++) {
             t_start = MPI_Wtime();
 
-            MPI_CHECK(MPI_Reduce_scatter( sendbuf, recvbuf, recvcounts, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD ));
+            MPI_CHECK(MPI_Reduce_scatter(sendbuf, recvbuf, recvcounts, MPI_FLOAT,
+                                            MPI_SUM, MPI_COMM_WORLD ));
             t_stop=MPI_Wtime();
-            if(i>=options.skip){
+            if (i>=options.skip) {
 
             timer+=t_stop-t_start;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -51,8 +51,10 @@ print_header(int rank, int full)
                     case OPENACC:
                     case ROCM:
                         fprintf(stdout, "# Send Buffer on %s and Receive Buffer on %s\n",
-                               'M' == options.src ? "MANAGED (M)" : ('D' == options.src ? "DEVICE (D)" : "HOST (H)"),
-                               'M' == options.dst ? "MANAGED (M)" : ('D' == options.dst ? "DEVICE (D)" : "HOST (H)"));
+                                'M' == options.src ? ('D' == options.MMsrc ? "MANAGED (MD)" : "MANAGED (MH)") :
+                                ('D' == options.src ? "DEVICE (D)" : "HOST (H)"),
+                                'M' == options.dst ? ('D' == options.MMdst ? "MANAGED (MD)" : "MANAGED (MH)"):
+                                ('D' == options.dst ? "DEVICE (D)" : "HOST (H)"));
                     default:
                         if (options.subtype == BW && options.bench != MBW_MR) {
                             fprintf(stdout, "%-*s%*s\n", 10, "# Size", FIELD_WIDTH, "Bandwidth (MB/s)");
@@ -319,6 +321,17 @@ static int set_num_iterations (int value)
     return 0;
 }
 
+static int set_validate (int value)
+{
+    if (value < 0 || value > 1) {
+        return -1;
+    }
+
+    options.validate = value;
+
+    return 0;
+}
+
 static int set_window_size (int value)
 {
     if (1 > value) {
@@ -408,8 +421,9 @@ int process_options (int argc, char *argv[])
             {"cuda-target",     required_argument,  0,  'r'},
             {"print-rate",      required_argument,  0,  'R'},
             {"num-pairs",       required_argument,  0,  'p'},
-            {"vary-window",     required_argument,  0,  'V'}
-            
+            {"vary-window",     required_argument,  0,  'V'},
+            {"validation",      required_argument,  0,  'c'},
+            {"buffer-num",      required_argument,  0,  'b'},
     };
 
     enable_accel_support();
@@ -417,7 +431,7 @@ int process_options (int argc, char *argv[])
     if (options.bench == PT2PT) {
         if (accel_enabled) {
             if (options.subtype == BW) {
-                optstring = "+:x:i:t:m:d:W:hv";
+                optstring = "+:x:i:t:m:d:W:hvb";
             } else {
                 optstring = "+:x:i:m:d:hv";
             }
@@ -427,21 +441,21 @@ int process_options (int argc, char *argv[])
             } else if (options.subtype == LAT_MP) {
                 optstring = "+:hvm:x:i:t:";
             } else if (options.subtype == BW) {
-                optstring = "+:hvm:x:i:t:W:";
+                optstring = "+:hvm:x:i:t:W:b:";
             } else {
-                optstring = "+:hvm:x:i:";
+                optstring = "+:hvm:x:i:b:";
             }
         }
     } else if (options.bench == COLLECTIVE) {
         if (options.subtype == LAT) { /* Blocking */
-            optstring = "+:hvfm:i:x:M:a:";
+            optstring = "+:hvfm:i:x:M:a:c:";
             if (accel_enabled) {
-                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:r:a:" : "+:d:hvfm:i:x:M:a:";
+                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:r:a:c:" : "+:d:hvfm:i:x:M:a:c:";
             }
         } else { /* Non-Blocking */
-            optstring = "+:hvfm:i:x:M:t:a:";
+            optstring = "+:hvfm:i:x:M:t:a:c";
             if (accel_enabled) {
-                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:t:r:a:" : "+:d:hvfm:i:x:M:t:a:";
+                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:t:r:a:c:" : "+:d:hvfm:i:x:M:t:a:c:";
             }
         }
     } else if (options.bench == ONE_SIDED) {
@@ -452,7 +466,7 @@ int process_options (int argc, char *argv[])
         }
         
     } else if (options.bench == MBW_MR){
-        optstring = (accel_enabled) ? "p:W:R:x:i:m:d:Vhv" : "p:W:R:x:i:m:Vhv";
+        optstring = (accel_enabled) ? "p:W:R:x:i:m:d:Vhvb:" : "p:W:R:x:i:m:Vhvb:";
     } else if (options.bench == OSHM || options.bench == UPC || options.bench == UPCXX) {
         optstring = ":hvfm:i:M:";
     } else {
@@ -478,6 +492,8 @@ int process_options (int argc, char *argv[])
     options.window_size = WINDOW_SIZE_LARGE;
     options.window_varied = 0;
     options.print_rate = 1;
+    options.validate = 0;
+    options.buf_num = SINGLE;
 
     options.src = 'H';
     options.dst = 'H';
@@ -717,6 +733,22 @@ int process_options (int argc, char *argv[])
                     return PO_BAD_USAGE;
                 }
                 break;
+            case 'c':
+                if (set_validate(atoi(optarg))) {
+                    bad_usage.message = "Invalid option or invalid argument";
+                }
+                break;
+            case 'b':
+                if (0 == strncasecmp(optarg, "single", 10)) {
+                    options.buf_num = SINGLE;
+                } else if (0 == strncasecmp(optarg, "multiple", 10)) {
+                    options.buf_num = MULTIPLE;
+                } else {
+                    bad_usage.message = "Please use 'single' or 'multiple' for buffer type";
+                    bad_usage.optarg = optarg;
+                    return PO_BAD_USAGE;
+                }
+                break;
             case ':':
                 bad_usage.message = "Option Missing Required Argument";
                 bad_usage.opt = optopt;
@@ -731,7 +763,51 @@ int process_options (int argc, char *argv[])
     if (accel_enabled) {
         if ((optind + 2) == argc) {
             options.src = argv[optind][0];
+            if (options.src == 'M')
+            {
+#ifdef _ENABLE_CUDA_KERNEL_
+                options.MMsrc = argv[optind][1];
+                if (options.MMsrc == '\0') {
+                    fprintf(stderr, "The M flag for destination buffer is "
+                            "deprecated. Please use MD or MH to set the "
+                            "effective location of CUDA Unified Memory buffers "
+                            "to be device or host respectively. Currently M "
+                            "flag is considered as MH\n");
+                    options.MMsrc = 'H';
+                } else if (options.MMsrc != 'D' && options.MMsrc != 'H') {
+                    fprintf(stderr, "Please use MD or MH to set the effective "
+                            "location of CUDA Unified Memory buffers to be "
+                            "device or host respectively\n");
+                    return PO_BAD_USAGE;
+                }
+#else
+                fprintf(stderr, "Managed memory support requires CUDA kernels.\n");
+                return PO_BAD_USAGE;
+#endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
+            }
             options.dst = argv[optind + 1][0];
+            if (options.dst == 'M')
+            {
+#ifdef _ENABLE_CUDA_KERNEL_
+                options.MMdst = argv[optind+1][1];
+                if (options.MMdst == '\0') {
+                    fprintf(stderr, "The M flag for destination buffer is "
+                            "deprecated. Please use MD or MH to set the "
+                            "effective location of CUDA Unified Memory buffers "
+                            "to be device or host respectively. Currently M "
+                            "flag is considered as MH\n");
+                    options.MMdst = 'H';
+                } else if (options.MMdst != 'D' && options.MMdst != 'H') {
+                    fprintf(stderr, "Please use MD or MH to set the effective "
+                            "location of CUDA Unified Memory buffers to be "
+                            "device or host respectively\n");
+                    return PO_BAD_USAGE;
+                }
+#else
+                fprintf(stderr, "Managed memory support requires CUDA kernels.\n");
+                return PO_BAD_USAGE;
+#endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
+            }
             /* No need to check if '-d' is given */
             if (NONE == options.accel) {
                 setAccel(options.src);
@@ -751,8 +827,11 @@ int setAccel(char buf_type)
     switch (buf_type) {
         case 'H':
             break;
-        case 'D':
         case 'M':
+            /* For managed memory benchmarks, use multiple buffers to report
+             * accurate performance numbers */
+            options.buf_num = MULTIPLE;
+        case 'D':
             if (options.bench != PT2PT && options.bench != ONE_SIDED && options.bench != MBW_MR) {
                 bad_usage.opt = buf_type;
                 bad_usage.message = "This argument is only supported for one-sided and pt2pt benchmarks";

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -59,6 +59,12 @@
 #   define CUDA_KERNEL_ENABLED 1
 #else
 #   define CUDA_KERNEL_ENABLED 0
+#endif
+
+#ifdef _ENABLE_NCCL_
+#   define NCCL_ENABLED 1
+#else
+#   define NCCL_ENABLED 0
 #endif
 
 #ifdef _ENABLE_ROCM_
@@ -247,6 +253,11 @@ enum SYNC {
 #endif
 };
 
+enum buffer_num {
+    SINGLE,
+    MULTIPLE
+};
+
 /*variables*/
 extern char const *win_info[20];
 extern char const *sync_info[20];
@@ -273,6 +284,10 @@ struct options_t {
 
     char src;
     char dst;
+    
+    char MMsrc;
+    char MMdst;
+
     int num_threads;
     int sender_thread;
     int num_processes;
@@ -286,6 +301,8 @@ struct options_t {
     int window_varied;
     int print_rate;
     int pairs;
+    int validate;
+    enum buffer_num buf_num;
 };
 
 struct bad_usage_t{

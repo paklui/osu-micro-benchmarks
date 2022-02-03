@@ -1,6 +1,6 @@
 #define BENCHMARK "OSU MPI%s All-to-All Personalized Exchange Latency Test"
 /*
- * Copyright (C) 2002-2020 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -19,6 +19,7 @@ main (int argc, char *argv[])
     double avg_time = 0.0, max_time = 0.0, min_time = 0.0;
     char * sendbuf = NULL, * recvbuf = NULL;
     int po_ret;
+    int errors = 0;
     size_t bufsize;
     options.bench = COLLECTIVE;
     options.subtype = LAT;
@@ -55,7 +56,7 @@ main (int argc, char *argv[])
             break;
     }
 
-    if(numprocs < 2) {
+    if (numprocs < 2) {
         if (rank == 0) {
             fprintf(stderr, "This test requires at least two processes\n");
         }
@@ -86,7 +87,7 @@ main (int argc, char *argv[])
     set_buffer(recvbuf, options.accel, 0, bufsize);
     print_preamble(rank);
 
-    for(size=options.min_message_size; size <= options.max_message_size; size *= 2) {
+    for (size=options.min_message_size; size <= options.max_message_size; size *= 2) {
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
@@ -96,10 +97,19 @@ main (int argc, char *argv[])
         timer=0.0;
 
         for (i=0; i < options.iterations + options.skip ; i++) {
+            if (options.validate) {
+                set_buffer_char(sendbuf, 1, size, rank, numprocs, options.accel);
+                set_buffer_char(recvbuf, 0, size, rank, numprocs, options.accel);
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+            }
             t_start = MPI_Wtime();
             MPI_CHECK(MPI_Alltoall(sendbuf, size, MPI_CHAR, recvbuf, size, MPI_CHAR,
                     MPI_COMM_WORLD));
             t_stop = MPI_Wtime();
+
+            if (options.validate) {
+                errors += validate_alltoall(recvbuf, size, rank, numprocs, i, options.accel);
+            }
 
             if (i >= options.skip) {
                 timer+=t_stop-t_start;
@@ -116,7 +126,12 @@ main (int argc, char *argv[])
                 MPI_COMM_WORLD));
         avg_time = avg_time/numprocs;
 
-        print_stats(rank, size, avg_time, min_time, max_time);
+        if (options.validate) {
+            print_stats_validate(rank, size * sizeof(char), avg_time, min_time,
+                                max_time, errors);
+        } else {
+            print_stats(rank, size, avg_time, min_time, max_time);
+        }
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
     }
 
