@@ -647,7 +647,7 @@ int process_options (int argc, char *argv[])
                         return PO_BAD_USAGE;
                     }
                 } else if (0 == strncasecmp(optarg, "managed", 10)) {
-                    if (CUDA_ENABLED) {
+                    if (CUDA_ENABLED || ROCM_ENABLED) {
                         options.accel = MANAGED;
                     } else {
                         bad_usage.message = "CUDA Managed Memory Support Not Enabled\n"

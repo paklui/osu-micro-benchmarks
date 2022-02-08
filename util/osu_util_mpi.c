@@ -846,6 +846,9 @@ int allocate_memory_coll (void ** buffer, size_t size, enum accel_type type)
         case ROCM:
             ROCM_CHECK(hipMalloc(buffer, size));
             return 0;
+        case MANAGED:
+            ROCM_CHECK(hipMallocManaged(buffer, size, hipMemAttachGlobal));
+            return 0;
 #endif
         default:
             return 1;
@@ -906,6 +909,9 @@ int allocate_device_buffer_one_sided (char ** buffer, size_t size)
         case ROCM:
              ROCM_CHECK(hipMalloc((void **)buffer, size));
             break;
+        case MANAGED:
+            ROCM_CHECK(hipMallocManaged((void **)buffer, size, hipMemAttachGlobal));
+            break;
 #endif
         default:
             fprintf(stderr, "Could not allocate device memory\n");
@@ -921,6 +927,11 @@ int allocate_managed_buffer (char ** buffer)
 #ifdef _ENABLE_CUDA_
         case CUDA:
             CUDA_CHECK(cudaMallocManaged((void **)buffer, options.max_message_size, cudaMemAttachGlobal));
+            break;
+#endif
+#ifdef _ENABLE_ROCM_
+        case ROCM:
+            ROCM_CHECK(hipMallocManaged((void **)buffer, options.max_message_size, hipMemAttachGlobal));
             break;
 #endif
         default:
