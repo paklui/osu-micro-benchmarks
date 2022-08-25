@@ -3,10 +3,18 @@
 
 AC_PREREQ([2.59])
 AC_INIT([OSU-Micro-Benchmarks], [5.9], [mvapich-discuss@cse.ohio-state.edu])
-AC_CONFIG_SRCDIR([mpi/pt2pt/osu_latency.c])
+AC_CONFIG_SRCDIR([c/mpi/pt2pt/osu_latency.c])
 
 AM_INIT_AUTOMAKE([foreign])
 LT_INIT
+
+dnl Disable C/C++ verions
+AC_ARG_ENABLE([c],
+              [AS_HELP_STRING([--disable-c],
+                              [Disable C benchmarks (default is no).])
+              ],
+              [enable_c=no],
+              [])
 
 dnl
 dnl Add NVCCFLAGS for additional flags
@@ -192,6 +200,7 @@ AS_IF([test "x$oshm_13_library" = xtrue], [
        ])
 AM_CONDITIONAL([MPI2_LIBRARY], [test x$mpi2_library = xtrue])
 AM_CONDITIONAL([MPI3_LIBRARY], [test x$mpi3_library = xtrue])
+AM_CONDITIONAL([C], [test x$enable_c != xno])
 AM_CONDITIONAL([CUDA], [test x$build_cuda = xyes])
 AM_CONDITIONAL([NCCL], [test x$enable_ncclomb = xyes])
 AM_CONDITIONAL([NCCL_PT2PT], [test x$nccl_pt2pt = xtrue])
@@ -207,7 +216,11 @@ AM_CONDITIONAL([BUILD_USE_PGI], [`$CXX -V 2>&1 | grep pgc++ > /dev/null 2>&1`])
 AC_DEFINE([FIELD_WIDTH], [18], [Width of field used to report numbers])
 AC_DEFINE([FLOAT_PRECISION], [2], [Precision of reported numbers])
 
-AC_CONFIG_FILES([Makefile mpi/Makefile mpi/pt2pt/Makefile mpi/startup/Makefile
-                 mpi/one-sided/Makefile mpi/collective/Makefile openshmem/Makefile 
-                 upc/Makefile upcxx/Makefile nccl/Makefile nccl/collective/Makefile nccl/pt2pt/Makefile])
+AC_CONFIG_FILES([Makefile c/Makefile c/mpi/Makefile c/mpi/pt2pt/Makefile 
+                 c/mpi/startup/Makefile c/mpi/one-sided/Makefile 
+                 c/mpi/collective/Makefile c/openshmem/Makefile 
+                 c/upc/Makefile c/upcxx/Makefile c/nccl/Makefile
+                 c/nccl/collective/Makefile c/nccl/pt2pt/Makefile
+               ])
+
 AC_OUTPUT

@@ -14,6 +14,14 @@ your library supports MPI-1, MPI-2, MPI-3, OpenSHMEM, and UPC++ to compile the
 corresponding benchmarks.  See http://mvapich.cse.ohio-state.edu/benchmarks/ to
 download the latest version of this package.
 
+The python directory contains Python versions of the benchmarks. These do not
+need to be compiled. See the README file located in the python directory
+for more details.
+
+The Java directory contains Java versions of the benchmarks. These are compiled
+separately via the javac compiler. See the README file located in the java
+directory for more details.
+
 OMB also contains ROCm, CUDA and OpenACC extensions to the benchmarks. CUDA
 extensions can be enabled by configuring OMB with --enable-cuda option as shown
 below.
