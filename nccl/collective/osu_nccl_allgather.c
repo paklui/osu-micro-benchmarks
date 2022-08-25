@@ -64,6 +64,11 @@ int main(int argc, char *argv[])
     }
 
     if ((options.max_message_size * numprocs) > options.max_mem_limit) {
+        if (rank == 0) {
+            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able to run up to %ld bytes.\n"
+                            "Continuing with max message size of %ld bytes\n", 
+                            options.max_message_size, options.max_mem_limit);
+        }
         options.max_message_size = options.max_mem_limit / numprocs;
     }
 

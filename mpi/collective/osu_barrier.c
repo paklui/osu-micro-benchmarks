@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
     timer = 0.0;
 
-    for (i=0; i < options.iterations + options.skip ; i++) {
+    for (i = 0; i < options.iterations + options.skip; i++) {
         t_start = MPI_Wtime();
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
         t_stop = MPI_Wtime();

@@ -1,3 +1,21 @@
+OSU Micro Benchmarks v5.9 (03/02/2022)
+
+* New Features & Enhancements
+    - Add support for data validation in mpi pt2pt benchmarks
+        * Enabled with the `-c` option
+    - Add support for data validation in mpi collective benchmarks
+        * Enabled with the `-c` option
+    - Add support for NCCL collective benchmarks
+        * osu_nccl_alltoall
+
+* Bug Fixes (since v5.8)
+    - Remove osu_latency_mp & osu_latency_mt from list of benchmarks that
+      have GPU support
+        * Thanks to Carl Ponder @NVIDIA for reporting the issue.
+    - Ignore the `--accelerator` option when using pt2pt benchmarks with GPU
+      enabled builds.
+        * Thanks to Adamn Goldman @Intel for the report
+
 OSU Micro Benchmarks v5.8 (08/12/2021)
 
 * New Features & Enhancements
@@ -5,7 +23,7 @@ OSU Micro Benchmarks v5.8 (08/12/2021)
         * osu_nccl_bibw
         * osu_nccl_bw
         * osu_nccl_latency
-    - Add support for NCCL collective benchmarks 
+    - Add support for NCCL collective benchmarks
         * osu_nccl_allgather
         * osu_nccl_allreduce
         * osu_nccl_bcast
@@ -100,7 +118,7 @@ OSU Micro Benchmarks v5.6 (03/01/2019)
         * osu_multi_lat
     - Add support to specify different number of sender and receiver threads for
       osu_latency_mt benchmark
-        
+
 * Bug Fixes
     - Remove -t option for blocking collectives
     - Fix issue when only building OpenSHMEM benchmarks
@@ -170,20 +188,20 @@ OSU Micro Benchmarks v5.4.0 (10/30/17)
 * New Features & Enhancements
     - Introduce new OpenSHMEM Non-blocking Benchmarks
         * osu_oshm_get_mr_nb
-        * osu_oshm_get_nb  
+        * osu_oshm_get_nb
         * osu_oshm_put_mr_nb
         * osu_oshm_put_nb
         * osu_oshm_put_overlap
     - Automatically build OpenSHMEM 1.3 benchmarks when library support
       is detected
-    - Add ability to specify min and max message size for point-to-point 
+    - Add ability to specify min and max message size for point-to-point
       and one-sided benchmarks
     - Enhanced error handling for MPI benchmarks
     - Code clean-ups and unification of utility functions across benchmarks
     - Enhanced help messages and runtime parameters
 
 * Bug Fixes
-    - Fix compile-time warnings 
+    - Fix compile-time warnings
     - Fix peer calculation formula in UPC/UPC++ benchmarks
     - Fix correct number of warmup iterations in osu_barrier benchmark
 
@@ -393,7 +411,7 @@ OSU Micro Benchmarks v3.9 (2/28/13)
 * New Features & Enhancements
     - Support buffer allocation using OpenACC in GPU benchmarks
     - Use average time instead of max time for calculating the bandwidth and
-      message rate in osu_mbw_mr 
+      message rate in osu_mbw_mr
         - Thanks to Alex Mikheev from Mellanox for the patch
 * Bug Fixes
     - Properly initialize host buffers for DH and HD transfers in GPU

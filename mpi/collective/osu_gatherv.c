@@ -12,16 +12,17 @@
 
 int main(int argc, char *argv[])
 {
-    int i, numprocs, rank, size, disp;
+    int i, j, numprocs, rank, size, disp;
     double latency = 0.0, t_start = 0.0, t_stop = 0.0;
     double timer=0.0;
+    int errors = 0, local_errors = 0;
     double avg_time = 0.0, max_time = 0.0, min_time = 0.0;
     char *sendbuf, *recvbuf;
     int *rdispls, *recvcounts;
     int po_ret;
     size_t bufsize;
     options.bench = COLLECTIVE;
-    options.subtype = LAT;
+    options.subtype = GATHER;
 
     set_header(HEADER);
     set_benchmark_name("osu_gatherv");
@@ -69,7 +70,8 @@ int main(int argc, char *argv[])
     }
 
     if (0 == rank) {
-        if (allocate_memory_coll((void**)&recvcounts, numprocs*sizeof(int), NONE)) {
+        if (allocate_memory_coll((void**)&recvcounts, numprocs * sizeof(int),
+                    NONE)) {
             fprintf(stderr, "Could Not Allocate Memory [rank %d]\n", rank);
             MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE));
         }
@@ -95,7 +97,8 @@ int main(int argc, char *argv[])
 
     print_preamble(rank);
 
-    for (size=options.min_message_size; size <= options.max_message_size; size *= 2) {
+    for (size = options.min_message_size; size <= options.max_message_size;
+            size *= 2) {
 
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
@@ -114,8 +117,19 @@ int main(int argc, char *argv[])
         }
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-        timer=0.0;
-        for (i=0; i < options.iterations + options.skip ; i++) {
+        timer = 0.0;
+
+        for (i = 0; i < options.iterations + options.skip; i++) {
+            if (options.validate) {
+                set_buffer_validation(sendbuf, recvbuf, size, options.accel, i);
+                for (j = 0; j < options.warmup_validation; j++) {
+                    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Gatherv(sendbuf, size, MPI_CHAR, recvbuf,
+                                recvcounts, rdispls, MPI_CHAR, 0,
+                                MPI_COMM_WORLD));
+                }
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+            }
 
             t_start = MPI_Wtime();
 
@@ -124,10 +138,16 @@ int main(int argc, char *argv[])
 
             t_stop = MPI_Wtime();
 
-            if (i >= options.skip) {
-                timer+= t_stop-t_start;
-            }
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+            if (options.validate && 0 == rank) {
+                local_errors += validate_data(recvbuf, size, numprocs,
+                        options.accel, i);
+            }
+
+            if (i >= options.skip) {
+                timer += t_stop - t_start;
+            }
         }
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
@@ -142,8 +162,23 @@ int main(int argc, char *argv[])
                 MPI_COMM_WORLD));
         avg_time = avg_time/numprocs;
 
-        print_stats(rank, size, avg_time, min_time, max_time);
+        if (options.validate) {
+            MPI_CHECK(MPI_Allreduce(&local_errors, &errors, 1, MPI_INT, MPI_SUM,
+                        MPI_COMM_WORLD));
+        }
+
+        if (options.validate) {
+            print_stats_validate(rank, size, avg_time, min_time, max_time,
+                    errors);
+        } else {
+            print_stats(rank, size, avg_time, min_time, max_time);
+        }
+
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+        if (0 != errors) {
+            break;
+        }
     }
 
     if (0 == rank) {
@@ -160,6 +195,12 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Error cleaning up device\n");
             exit(EXIT_FAILURE);
         }
+    }
+
+    if (0 != errors && options.validate && 0 == rank ) {
+        fprintf(stdout, "DATA VALIDATION ERROR: %s exited with status %d on"
+                " message size %d.\n", argv[0], EXIT_FAILURE, size);
+        exit(EXIT_FAILURE);
     }
 
     return EXIT_SUCCESS;

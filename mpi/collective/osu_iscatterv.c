@@ -1,7 +1,7 @@
 #define BENCHMARK "OSU MPI%s Non-blocking Scatterv Latency Test"
 /*
  * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
- * (NBCL), The Ohio State University. 
+ * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
  *
@@ -13,12 +13,13 @@
 
 int main(int argc, char *argv[])
 {
-    int i = 0, rank, size, disp;
+    int i = 0, j, rank, size, disp;
     int numprocs;
     double latency = 0.0, t_start = 0.0, t_stop = 0.0;
     double tcomp = 0.0, tcomp_total=0.0, latency_in_secs=0.0;
     double test_time = 0.0, test_total = 0.0;
     double timer=0.0;
+    int errors = 0, local_errors = 0;
     double wait_time = 0.0, init_time = 0.0;
     double init_total = 0.0, wait_total = 0.0;
     char *sendbuf=NULL;
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
     set_header(HEADER);
     set_benchmark_name("osu_iscatterv");
     options.bench = COLLECTIVE;
-    options.subtype = NBC;
+    options.subtype = NBC_SCATTER;
     po_ret = process_options(argc, argv);
 
     if (PO_OKAY == po_ret && NONE != options.accel) {
@@ -74,15 +75,17 @@ int main(int argc, char *argv[])
 
     if ((options.max_message_size * numprocs) > options.max_mem_limit) {
         if (rank == 0) {
-            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able to run up to %ld bytes.\n"
-                            "Continuing with max message size of %ld bytes\n", 
-                            options.max_message_size, options.max_mem_limit / numprocs);
+            fprintf(stderr, "Warning! Increase the Max Memory Limit to be able"
+                    " to run up to %ld bytes.\n"
+                    " Continuing with max message size of %ld bytes\n",
+                    options.max_message_size, options.max_mem_limit / numprocs);
         }
         options.max_message_size = options.max_mem_limit / numprocs;
     }
-    
+
     if (0 == rank) {
-        if (allocate_memory_coll((void**)&sendcounts, numprocs*sizeof(int), NONE)) {
+        if (allocate_memory_coll((void**)&sendcounts, numprocs * sizeof(int),
+                    NONE)) {
             fprintf(stderr, "Could Not Allocate Memory [rank %d]\n", rank);
             MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE));
         }
@@ -108,7 +111,8 @@ int main(int argc, char *argv[])
 
     print_preamble_nbc(rank);
 
-    for (size=options.min_message_size; size <=options.max_message_size; size *= 2) {
+    for (size = options.min_message_size; size <= options.max_message_size;
+            size *= 2) {
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
@@ -124,36 +128,58 @@ int main(int argc, char *argv[])
                 disp += size;
             }
         }
-	
+
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-        
-        timer = 0.0;     
-        
-        for (i=0; i < options.iterations + options.skip ; i++) {
+
+        timer = 0.0;
+
+        for (i = 0; i < options.iterations + options.skip; i++) {
+            if (options.validate) {
+                set_buffer_validation(sendbuf, recvbuf, size, options.accel, i);
+                for (j = 0; j < options.warmup_validation; j++) {
+                    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Iscatterv(sendbuf, sendcounts, sdispls,
+                                MPI_CHAR, recvbuf, size, MPI_CHAR, 0,
+                                MPI_COMM_WORLD, &request));
+                    MPI_CHECK(MPI_Wait(&request,&status));
+                }
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+            }
+
             t_start = MPI_Wtime();
-            
-            MPI_CHECK(MPI_Iscatterv(sendbuf, sendcounts, sdispls, MPI_CHAR, recvbuf,
-                      size, MPI_CHAR, 0, MPI_COMM_WORLD, &request));
+
+            MPI_CHECK(MPI_Iscatterv(sendbuf, sendcounts, sdispls, MPI_CHAR,
+                        recvbuf, size, MPI_CHAR, 0, MPI_COMM_WORLD, &request));
             MPI_CHECK(MPI_Wait(&request,&status));
 
             t_stop = MPI_Wtime();
-            
-            if (i>=options.skip) {
-                timer += t_stop-t_start;
-            } 
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-        }  
-        
+
+            if (options.validate) {
+                local_errors += validate_data(recvbuf, size, numprocs,
+                        options.accel, i);
+            }
+
+            if (i >= options.skip) {
+                timer += t_stop-t_start;
+            }
+        }
+
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
+        if (options.validate) {
+            MPI_CHECK(MPI_Allreduce(&local_errors, &errors, 1, MPI_INT, MPI_SUM,
+                        MPI_COMM_WORLD));
+        }
+
         latency = (timer * 1e6) / options.iterations;
-        
+
         latency_in_secs = timer/options.iterations;
 
         init_arrays(latency_in_secs);
-        
+
         if (0 == rank) {
-            disp =0;
+            disp = 0;
             for ( i = 0; i < numprocs; i++) {
                 sendcounts[i] = size;
                 sdispls[i] = disp;
@@ -163,20 +189,32 @@ int main(int argc, char *argv[])
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-        timer = 0.0; tcomp_total = 0; tcomp = 0;        
+        timer = 0.0; tcomp_total = 0; tcomp = 0;
         init_total = 0.0; wait_total = 0.0;
         test_time = 0.0, test_total = 0.0;
 
-        for (i=0; i < options.iterations + options.skip ; i++) {
+        for (i = 0; i < options.iterations + options.skip; i++) {
+            if (options.validate) {
+                set_buffer_validation(sendbuf, recvbuf, size, options.accel, i);
+                for (j = 0; j < options.warmup_validation; j++) {
+                    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Iscatterv(sendbuf, sendcounts, sdispls,
+                                MPI_CHAR, recvbuf, size, MPI_CHAR, 0,
+                                MPI_COMM_WORLD, &request));
+                    MPI_CHECK(MPI_Wait(&request,&status));
+                }
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+            }
+
             t_start = MPI_Wtime();
 
             init_time = MPI_Wtime();
-            MPI_CHECK(MPI_Iscatterv(sendbuf, sendcounts, sdispls, MPI_CHAR, recvbuf,
-                      size, MPI_CHAR, 0, MPI_COMM_WORLD, &request));
+            MPI_CHECK(MPI_Iscatterv(sendbuf, sendcounts, sdispls, MPI_CHAR,
+                        recvbuf, size, MPI_CHAR, 0, MPI_COMM_WORLD, &request));
             init_time = MPI_Wtime() - init_time;
 
-            tcomp = MPI_Wtime();             
-            test_time = dummy_compute(latency_in_secs, &request); 
+            tcomp = MPI_Wtime();
+            test_time = dummy_compute(latency_in_secs, &request);
             tcomp = MPI_Wtime() - tcomp;
 
             wait_time = MPI_Wtime();
@@ -184,7 +222,13 @@ int main(int argc, char *argv[])
             wait_time = MPI_Wtime() - wait_time;
 
             t_stop = MPI_Wtime();
-            
+            MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+            if (options.validate) {
+                local_errors += validate_data(recvbuf, size, numprocs,
+                        options.accel, i);
+            }
+
             if (i>=options.skip) {
                 timer += t_stop-t_start;
                 tcomp_total += tcomp;
@@ -192,17 +236,27 @@ int main(int argc, char *argv[])
                 init_total += init_time;
                 wait_total += wait_time;
             }
-            MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-        }  
-       
-        MPI_Barrier (MPI_COMM_WORLD);
-        
+        }
+
+        if (options.validate) {
+            int errors_temp = 0;
+            MPI_CHECK(MPI_Allreduce(&local_errors, &errors_temp, 1, MPI_INT,
+                        MPI_SUM, MPI_COMM_WORLD));
+            errors += errors_temp;
+        }
+
+        MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
         calculate_and_print_stats(rank, size, numprocs,
                                   timer, latency,
                                   test_total, tcomp_total,
-                                  wait_total, init_total);
-    }  
-    
+                                  wait_total, init_total,
+                                  errors);
+        if (0 != errors) {
+            break;
+        }
+    }
+
     if (0 == rank) {
         free_buffer(sendcounts, NONE);
         free_buffer(sdispls, NONE);
@@ -218,7 +272,13 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
-   
+
+    if (0 != errors && options.validate && 0 == rank) {
+        fprintf(stdout, "DATA VALIDATION ERROR: %s exited with status %d on"
+                " message size %d.\n", argv[0], EXIT_FAILURE, size);
+        exit(EXIT_FAILURE);
+    }
+
     return EXIT_SUCCESS;
 }
 

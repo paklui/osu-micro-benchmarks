@@ -71,11 +71,11 @@ void print_version_message (int rank);
 void print_preamble (int rank);
 void print_preamble_nbc (int rank);
 void print_stats (int rank, int size, double avg, double min, double max);
-void print_stats_validate(int rank, int size, double avg, double min, double max,
-                          int errors);
-void print_stats_nbc (int rank, int size, double ovrl, double cpu, double avg_comm,
-                      double min_comm, double max_comm,
-                      double wait, double init, double test);
+void print_stats_validate(int rank, int size, double avg, double min,
+                          double max, int errors);
+void print_stats_nbc (int rank, int size, double ovrl, double cpu,
+                      double avg_comm, double min_comm, double max_comm,
+                      double wait, double init, double test, int errors);
 
 /*
  * Memory Management
@@ -83,11 +83,14 @@ void print_stats_nbc (int rank, int size, double ovrl, double cpu, double avg_co
 int allocate_memory_coll (void ** buffer, size_t size, enum accel_type type);
 void free_buffer (void * buffer, enum accel_type type);
 void set_buffer (void * buffer, enum accel_type type, int data, size_t size);
-void set_buffer_pt2pt (void * buffer, int rank, enum accel_type type, int data, size_t size);
+void set_buffer_pt2pt (void * buffer, int rank, enum accel_type type, int data,
+                       size_t size);
+void set_buffer_validation(void* s_buf, void* r_buf, size_t size,
+                           enum accel_type type, int iter);
 void set_buffer_float (float * buffer, int is_send_buf, size_t size, int iter,
-        enum accel_type type);
-void set_buffer_char (char * buffer, int is_send_buf, size_t size, int rank, int num_procs,
-        enum accel_type type);
+                       enum accel_type type);
+void set_buffer_char (char * buffer, int is_send_buf, size_t size, int rank,
+                      int num_procs, enum accel_type type, int iter);
 
 /*
  * CUDA Context Management
@@ -130,9 +133,16 @@ void free_atomic_memory (void *sbuf, void *win_baseptr, void *tbuf, void *cbuf, 
 int omb_get_local_rank();
 
 /*
- * Validation Functions
+ * Data Validation
  */
+#define VALIDATION_STATUS(error) (error > 0) ? "Fail" : "Pass"
+#define ERROR_DELTA 0.001
+uint8_t validate_data(void* r_buf, size_t size, int num_procs,
+                      enum accel_type type, int iter);
 int validate_reduction(float * buffer, size_t size, int iter, int num_procs,
-        enum accel_type type);
-int validate_alltoall(char * buffer, size_t size, int rank, int num_procs, int iter,
-        enum accel_type type);
+                       enum accel_type type);
+int validate_collective(char *buffer, size_t size, int value1, int value2,
+                        enum accel_type type, int itr);
+int validate_reduce_scatter(float *buffer, size_t size, int* recvcounts,
+                            int rank, int num_procs, enum accel_type type,
+                            int iter);

@@ -145,7 +145,8 @@ void
 calculate_and_print_stats(int rank, int size, int numprocs,
                           double timer, double latency,
                           double test_time, double cpu_time,
-                          double wait_time, double init_time);
+                          double wait_time, double init_time,
+                          int errors);
 
 
 enum mpi_req{
@@ -171,6 +172,8 @@ enum mpi_req{
 #define OSHM_LOOP_SMALL_MR 500
 #define OSHM_LOOP_LARGE_MR 50
 #define OSHM_LOOP_ATOMIC 500
+#define VALIDATION_SKIP_DEFAULT 5
+#define VALIDATION_SKIP_MAX 10
 
 #define MAX_MESSAGE_SIZE (1 << 22)
 #define MAX_MSG_SIZE_PT2PT (1<<20)
@@ -226,6 +229,17 @@ enum test_subtype {
     LAT_MT,
     LAT_MP,
     NBC,
+    ALLTOALL,
+    GATHER,
+    REDUCE_SCATTER,
+    NBC_ALLTOALL,
+    NBC_GATHER,
+    NBC_REDUCE,
+    NBC_SCATTER,
+    NBC_BCAST,
+    SCATTER,
+    REDUCE,
+    BCAST
 };
 
 enum test_synctype {
@@ -274,6 +288,7 @@ struct options_t {
     size_t max_mem_limit;
     size_t skip;
     size_t skip_large;
+    size_t warmup_validation;
     size_t window_size_large;
     int num_probes;
     int device_array_size;
@@ -284,7 +299,7 @@ struct options_t {
 
     char src;
     char dst;
-    
+
     char MMsrc;
     char MMdst;
 

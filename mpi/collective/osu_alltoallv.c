@@ -12,16 +12,17 @@
 
 int main(int argc, char *argv[])
 {
-    int i = 0, rank = 0, size, numprocs, disp;
+    int i = 0, j, rank = 0, size, numprocs, disp;
     double latency=0.0, t_start = 0.0, t_stop = 0.0;
     double timer=0.0;
+    int errors = 0, local_errors = 0;
     double avg_time = 0.0, max_time = 0.0, min_time = 0.0;
     char *sendbuf=NULL, *recvbuf=NULL;
     int *rdispls=NULL, *recvcounts=NULL, *sdispls=NULL, *sendcounts=NULL;
     int po_ret;
     size_t bufsize;
     options.bench = COLLECTIVE;
-    options.subtype = LAT;
+    options.subtype = ALLTOALL;
 
     set_header(HEADER);
     set_benchmark_name("osu_alltoallv");
@@ -103,13 +104,14 @@ int main(int argc, char *argv[])
 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-    for (size=options.min_message_size; size <= options.max_message_size; size *= 2) {
+    for (size = options.min_message_size; size <= options.max_message_size;
+            size *= 2) {
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
         }
 
-        disp =0;
+        disp = 0;
         for (i = 0; i < numprocs; i++) {
             recvcounts[i] = size;
             sendcounts[i] = size;
@@ -121,19 +123,38 @@ int main(int argc, char *argv[])
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
-        timer=0.0;
+        timer = 0.0;
+
         for (i = 0; i < options.iterations + options.skip; i++) {
+            if (options.validate) {
+                set_buffer_validation(sendbuf, recvbuf, size, options.accel, i);
+                for (j = 0; j < options.warmup_validation; j++) {
+                    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Alltoallv(sendbuf, sendcounts, sdispls,
+                                MPI_CHAR, recvbuf, recvcounts, rdispls,
+                                MPI_CHAR, MPI_COMM_WORLD));
+                }
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+            }
+
             t_start = MPI_Wtime();
 
-              MPI_CHECK(MPI_Alltoallv(sendbuf, sendcounts, sdispls, MPI_CHAR, recvbuf, recvcounts, rdispls, MPI_CHAR,
-                      MPI_COMM_WORLD));
+            MPI_CHECK(MPI_Alltoallv(sendbuf, sendcounts, sdispls, MPI_CHAR,
+                        recvbuf, recvcounts, rdispls, MPI_CHAR,
+                        MPI_COMM_WORLD));
 
             t_stop = MPI_Wtime();
 
-            if (i>=options.skip) {
-                timer+=t_stop-t_start;
-            }
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+            if (options.validate) {
+                local_errors += validate_data(recvbuf, size, numprocs,
+                        options.accel, i);
+            }
+
+            if (i >= options.skip) {
+                timer += t_stop - t_start;
+            }
         }
 
         latency = (double)(timer * 1e6) / options.iterations;
@@ -146,9 +167,23 @@ int main(int argc, char *argv[])
                 MPI_COMM_WORLD));
         avg_time = avg_time/numprocs;
 
-        print_stats(rank, size, avg_time, min_time, max_time);
+        if (options.validate) {
+            MPI_CHECK(MPI_Allreduce(&local_errors, &errors, 1, MPI_INT, MPI_SUM,
+                        MPI_COMM_WORLD));
+        }
+
+        if (options.validate) {
+            print_stats_validate(rank, size * sizeof(char), avg_time, min_time,
+                    max_time, errors);
+        } else {
+            print_stats(rank, size, avg_time, min_time, max_time);
+        }
 
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+        if (0 != errors) {
+            break;
+        }
     }
 
     free_buffer(rdispls, NONE);
@@ -165,6 +200,12 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Error cleaning up device\n");
             exit(EXIT_FAILURE);
         }
+    }
+
+    if (0 != errors && options.validate && 0 == rank) {
+        fprintf(stdout, "DATA VALIDATION ERROR: %s exited with status %d on"
+                " message size %d.\n", argv[0], EXIT_FAILURE, size);
+        exit(EXIT_FAILURE);
     }
 
     return EXIT_SUCCESS;

@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
     allocate_host_arrays();
 
-    for (i=0; i < options.iterations + options.skip ; i++) {
+    for (i = 0; i < options.iterations + options.skip; i++) {
         t_start = MPI_Wtime();
         MPI_CHECK(MPI_Ibarrier(MPI_COMM_WORLD, &request));
         MPI_CHECK(MPI_Wait(&request,&status));
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     init_total = 0.0; wait_total = 0.0;
     test_time = 0.0, test_total = 0.0;
 
-    for (i=0; i < options.iterations + options.skip ; i++) {
+    for (i = 0; i < options.iterations + options.skip; i++) {
             t_start = MPI_Wtime();
 
             init_time = MPI_Wtime();
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
     calculate_and_print_stats(rank, size, numprocs,
                                   timer, latency,
                                   test_total, tcomp_total,
-                                  wait_total, init_total);
+                                  wait_total, init_total, 0);
 
     free_host_arrays();
 #ifdef _ENABLE_CUDA_KERNEL_

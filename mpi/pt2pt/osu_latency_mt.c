@@ -1,7 +1,7 @@
 #define BENCHMARK "OSU MPI%s Multi-threaded Latency Test"
 /*
  * Copyright (C) 2002-2021 the Network-Based Computing Laboratory
- * (NBCL), The Ohio State University. 
+ * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
  *
@@ -18,10 +18,11 @@ pthread_cond_t  finished_size_sender_cond;
 
 pthread_barrier_t sender_barrier;
 
-double t_start = 0, t_end = 0;
+double t_start = 0, t_end = 0, t_total = 0;
 
 int finished_size = 0;
 int finished_size_sender = 0;
+int errors_reduced = 0, local_errors = 0;
 
 int num_threads_sender = 1;
 typedef struct thread_tag  {
@@ -115,8 +116,19 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    if (options.validate && options.num_threads != options.sender_thread) {
+        if (myid == 0) {
+            fprintf(stderr, "Number of sender and receiver threads must be same"
+                    " when validation is enabled. Use option -t to set\n");
+        }
+
+        MPI_CHECK(MPI_Finalize());
+
+        return EXIT_FAILURE;
+    }
+
     /* Check to make sure we actually have a thread-safe
-     * implementation 
+     * implementation
      */
 
     finished_size = 1;
@@ -132,22 +144,20 @@ int main(int argc, char *argv[])
 
         return EXIT_FAILURE;
     }
-    
-    
+
+
     if (options.sender_thread != -1) {
         num_threads_sender = options.sender_thread;
     }
 
-   
+
     pthread_barrier_init(&sender_barrier, NULL, num_threads_sender);
 
 
     if (myid == 0) {
         printf("# Number of Sender threads: %d \n# Number of Receiver threads: %d\n",num_threads_sender,options.num_threads );
-    
+
         print_header(myid, LAT_MT);
-        fprintf(stdout, "%-*s%*s\n", 10, "# Size", FIELD_WIDTH, "Latency (us)");
-        fflush(stdout);
 
         for (i = 0; i < num_threads_sender; i++) {
             tags[i].id = i;
@@ -174,7 +184,7 @@ int main(int argc, char *argv[])
 
 void * recv_thread(void *arg)
 {
-    int size = 0, i = 0, val = 0;
+    int size = 0, i = 0, val = 0, j;
     int iter = 0;
     int myid = 0;
     char * ret = NULL;
@@ -193,12 +203,14 @@ void * recv_thread(void *arg)
 
     if (allocate_memory_pt2pt(&s_buf, &r_buf, myid)) {
         /* Error allocating memory */
-        fprintf(stderr, "Error allocating memory on Rank %d, thread ID %d\n", myid, thread_id->id);
+        fprintf(stderr, "Error allocating memory on Rank %d, thread ID %d\n",
+                myid, thread_id->id);
         *ret = '1';
         return ret;
     }
 
-    for (size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
+    for (size = options.min_message_size, iter = 0; size <=
+            options.max_message_size; size = (size ? size * 2 : 1)) {
         pthread_mutex_lock(&finished_size_mutex);
 
         if (finished_size == options.num_threads) {
@@ -220,26 +232,48 @@ void * recv_thread(void *arg)
         if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
-        }  
+        }
 
         /* touch the data */
         set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
-        for (i = val; i < (options.iterations + options.skip); i += options.num_threads) {
-            if (options.sender_thread>1) {
-                MPI_Recv (r_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD,
-                        &reqstat[val]);
-                MPI_Send (s_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD);
+        if (options.validate) {
+            errors_reduced = 0;
+        }
+
+        for (i = val; i < (options.iterations + options.skip); i +=
+                options.num_threads) {
+            if (options.validate) {
+                set_buffer_validation(s_buf, r_buf, size, options.accel,
+                        (i - val));
             }
-            else {
-                MPI_Recv (r_buf, size, MPI_CHAR, 0, 1, MPI_COMM_WORLD,
-                        &reqstat[val]);
-                MPI_Send (s_buf, size, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
+            for (j = 0; j <= options.warmup_validation; j++) {
+                if (options.sender_thread>1) {
+                    MPI_Recv (r_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD,
+                            &reqstat[val]);
+                    MPI_Send (s_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD);
+                }
+                else {
+                    MPI_Recv (r_buf, size, MPI_CHAR, 0, 1, MPI_COMM_WORLD,
+                            &reqstat[val]);
+                    MPI_Send (s_buf, size, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
+                }
+            }
+            if (options.validate) {
+                local_errors += validate_data(r_buf, size, 1, options.accel,
+                        (i - val));
             }
         }
 
         iter++;
+        if (options.validate) {
+            MPI_CHECK(MPI_Allreduce(&local_errors, &errors_reduced, 1, MPI_INT,
+                        MPI_SUM, MPI_COMM_WORLD));
+            if (errors_reduced != 0) {
+                break;
+            }
+        }
     }
 
     free_memory(s_buf, r_buf, myid);
@@ -252,12 +286,13 @@ void * recv_thread(void *arg)
 
 void * send_thread(void *arg)
 {
-    int size = 0, i = 0, val = 0, iter = 0;
+    int size = 0, i = 0, val = 0, iter = 0, j;
     int myid = 0;
     char *s_buf, *r_buf;
-    double t = 0, latency = 0;
+    double latency = 0;
     thread_tag_t *thread_id = (thread_tag_t *)arg;
     char *ret = NULL;
+    int flag_print = 0;
 
     val = thread_id->id;
 
@@ -270,70 +305,116 @@ void * send_thread(void *arg)
 
     if (allocate_memory_pt2pt(&s_buf, &r_buf, myid)) {
         /* Error allocating memory */
-        fprintf(stderr, "Error allocating memory on Rank %d, thread ID %d\n", myid, thread_id->id);
+        fprintf(stderr, "Error allocating memory on Rank %d, thread ID %d\n",
+                myid, thread_id->id);
         *ret = '1';
         return ret;
     }
 
-    for (size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
+    for (size = options.min_message_size, iter = 0; size <=
+            options.max_message_size; size = (size ? size * 2 : 1)) {
         pthread_mutex_lock(&finished_size_sender_mutex);
-        
+
         if (finished_size_sender == num_threads_sender) {
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-        
+
             finished_size_sender = 1;
 
             pthread_mutex_unlock(&finished_size_sender_mutex);
             pthread_cond_broadcast(&finished_size_sender_cond);
-        } else {  
+        } else {
             finished_size_sender++;
 
-            pthread_cond_wait(&finished_size_sender_cond, &finished_size_sender_mutex);
+            pthread_cond_wait(&finished_size_sender_cond,
+                    &finished_size_sender_mutex);
             pthread_mutex_unlock(&finished_size_sender_mutex);
         }
 
         if (size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
-        }  
+        }
 
         /* touch the data */
         set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
-        int flag_print=0;
+        if (options.validate) {
+            errors_reduced = 0;
+        }
+
+        flag_print = 0;
+        t_total = 0.0;
         for (i = val; i < options.iterations + options.skip; i+=num_threads_sender) {
-            if (i == options.skip) {
-                t_start = MPI_Wtime();
-                flag_print =1;
+            if (options.validate) {
+                set_buffer_validation(s_buf, r_buf, size, options.accel,
+                        (i - val));
             }
 
-            if (options.sender_thread>1) {     
-                MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, i, MPI_COMM_WORLD));
-                MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, i, MPI_COMM_WORLD,
-                        &reqstat[val]));
-            } else {
-                MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, 1, MPI_COMM_WORLD));
-                MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, 2, MPI_COMM_WORLD,
-                        &reqstat[val]));
+            for (j = 0; j <= options.warmup_validation; j++) {
+                if (i == options.skip) {
+                    flag_print = 1;
+                }
+
+                if (i >= options.skip && j == options.warmup_validation) {
+                    t_start = MPI_Wtime();
+                }
+
+                if (options.sender_thread > 1) {
+                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, i,
+                                MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, i,
+                                MPI_COMM_WORLD, &reqstat[val]));
+                } else {
+                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, 1,
+                                MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, 2,
+                                MPI_COMM_WORLD, &reqstat[val]));
+                }
+
+                if (i >= options.skip && j == options.warmup_validation) {
+                    t_end = MPI_Wtime();
+                    t_total += (t_end - t_start);
+                }
             }
+            if (options.validate) {
+                local_errors += validate_data(r_buf, size, 1, options.accel,
+                        (i - val));
+            }
+        }
+
+        if (options.validate) {
+            MPI_CHECK(MPI_Allreduce(&local_errors, &errors_reduced, 1, MPI_INT,
+                        MPI_SUM, MPI_COMM_WORLD));
         }
 
         pthread_barrier_wait(&sender_barrier);
-        if (flag_print==1) {
-            t_end = MPI_Wtime ();
-            t = t_end - t_start;
-
-            latency = (t) * 1.0e6 / (2.0 * options.iterations / num_threads_sender);
-            fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH, FLOAT_PRECISION,
-                    latency);
+        if (flag_print == 1) {
+            latency = (t_total) * 1.0e6 / (2.0 * options.iterations /
+                    num_threads_sender);
+            if (options.validate) {
+                fprintf(stdout, "%-*d%*.*f%*s\n", 10, size, FIELD_WIDTH,
+                        FLOAT_PRECISION, latency, FIELD_WIDTH,
+                        VALIDATION_STATUS(errors_reduced));
+            } else {
+                fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH,
+                        FLOAT_PRECISION, latency);
+            }
             fflush(stdout);
         }
         iter++;
+        if (options.validate && errors_reduced !=0) {
+            break;
+        }
     }
 
     free_memory(s_buf, r_buf, myid);
 
+    if (0 != errors_reduced && options.validate && 0 == myid && 1 == flag_print) {
+        fprintf(stdout, "DATA VALIDATION ERROR: %s exited with status %d on"
+                " message size %d.\n", "osu_latency_mt", EXIT_FAILURE, size);
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }
 

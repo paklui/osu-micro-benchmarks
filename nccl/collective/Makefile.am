@@ -8,7 +8,7 @@ SUFFIXES = .cu .cpp
 	mv $@.ii $@
 
 ncclcollectivedir = $(pkglibexecdir)/nccl/collective
-ncclcollective_PROGRAMS = osu_nccl_allgather osu_nccl_allreduce osu_nccl_bcast osu_nccl_reduce osu_nccl_reduce_scatter
+ncclcollective_PROGRAMS = osu_nccl_allgather osu_nccl_allreduce osu_nccl_bcast osu_nccl_reduce osu_nccl_reduce_scatter osu_nccl_alltoall
 
 AM_CFLAGS = -I${top_srcdir}/util
 
@@ -25,6 +25,7 @@ osu_nccl_allreduce_SOURCES = osu_nccl_allreduce.c $(UTILITIES)
 osu_nccl_bcast_SOURCES = osu_nccl_bcast.c $(UTILITIES)
 osu_nccl_reduce_SOURCES = osu_nccl_reduce.c $(UTILITIES)
 osu_nccl_reduce_scatter_SOURCES = osu_nccl_reduce_scatter.c $(UTILITIES)
+osu_nccl_alltoall_SOURCES = osu_nccl_alltoall.c $(UTILITIES)
 
 if EMBEDDED_BUILD
     AM_LDFLAGS =

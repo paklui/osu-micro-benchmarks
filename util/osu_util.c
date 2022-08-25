@@ -57,9 +57,18 @@ print_header(int rank, int full)
                                 ('D' == options.dst ? "DEVICE (D)" : "HOST (H)"));
                     default:
                         if (options.subtype == BW && options.bench != MBW_MR) {
-                            fprintf(stdout, "%-*s%*s\n", 10, "# Size", FIELD_WIDTH, "Bandwidth (MB/s)");
+                            fprintf(stdout, "%-*s%*s", 10, "# Size", FIELD_WIDTH, "Bandwidth (MB/s)");
                         } else if (options.subtype == LAT) {
-                            fprintf(stdout, "%-*s%*s\n", 10, "# Size", FIELD_WIDTH, "Latency (us)");
+                            fprintf(stdout, "%-*s%*s", 10, "# Size", FIELD_WIDTH, "Latency (us)");
+                        } else if (options.subtype == LAT_MP){
+                            fprintf(stdout, "%-*s%*s", 10, "# Size", FIELD_WIDTH,"Latency (us)");
+                        } else if (options.subtype == LAT_MT){
+                            fprintf(stdout, "%-*s%*s", 10, "# Size", FIELD_WIDTH, "Latency (us)");
+                        }
+                        if (options.validate && !(options.subtype == BW && options.bench == MBW_MR)){
+                            fprintf(stdout, "%*s\n", FIELD_WIDTH, "Validation");
+                        } else{
+                            fprintf(stdout, "\n");
                         }
                         fflush(stdout);
                 }
@@ -231,8 +240,8 @@ set_threads (char *val_str)
             if (retval == -1){
                 return retval;
             }
-        } 
-        
+        }
+
     }
 
     return retval;
@@ -290,8 +299,8 @@ set_processes (char *val_str)
             if (retval == -1){
                 return retval;
             }
-        } 
-        
+        }
+
     }
 
     return retval;
@@ -309,6 +318,17 @@ static int set_num_warmup (int value)
     return 0;
 }
 
+static int set_num_warmup_validation (int value)
+{
+    if (0 > value) {
+        return -1;
+    }
+
+    options.warmup_validation = value;
+
+    return 0;
+}
+
 static int set_num_iterations (int value)
 {
     if (1 > value) {
@@ -317,17 +337,6 @@ static int set_num_iterations (int value)
 
     options.iterations = value;
     options.iterations_large = value;
-
-    return 0;
-}
-
-static int set_validate (int value)
-{
-    if (value < 0 || value > 1) {
-        return -1;
-    }
-
-    options.validate = value;
 
     return 0;
 }
@@ -405,25 +414,26 @@ int process_options (int argc, char *argv[])
     int option_index = 0;
 
     static struct option long_options[] = {
-            {"help",            no_argument,        0,  'h'},
-            {"version",         no_argument,        0,  'v'},
-            {"full",            no_argument,        0,  'f'},
-            {"message-size",    required_argument,  0,  'm'},
-            {"window-size",     required_argument,  0,  'W'},
-            {"num-test-calls",  required_argument,  0,  't'},
-            {"iterations",      required_argument,  0,  'i'},
-            {"warmup",          required_argument,  0,  'x'},
-            {"array-size",      required_argument,  0,  'a'},
-            {"sync-option",     required_argument,  0,  's'},
-            {"win-options",     required_argument,  0,  'w'},
-            {"mem-limit",       required_argument,  0,  'M'},
-            {"accelerator",     required_argument,  0,  'd'},
-            {"cuda-target",     required_argument,  0,  'r'},
-            {"print-rate",      required_argument,  0,  'R'},
-            {"num-pairs",       required_argument,  0,  'p'},
-            {"vary-window",     required_argument,  0,  'V'},
-            {"validation",      required_argument,  0,  'c'},
-            {"buffer-num",      required_argument,  0,  'b'},
+            {"help",                no_argument,        0,  'h'},
+            {"version",             no_argument,        0,  'v'},
+            {"full",                no_argument,        0,  'f'},
+            {"message-size",        required_argument,  0,  'm'},
+            {"window-size",         required_argument,  0,  'W'},
+            {"num-test-calls",      required_argument,  0,  't'},
+            {"iterations",          required_argument,  0,  'i'},
+            {"warmup",              required_argument,  0,  'x'},
+            {"array-size",          required_argument,  0,  'a'},
+            {"sync-option",         required_argument,  0,  's'},
+            {"win-options",         required_argument,  0,  'w'},
+            {"mem-limit",           required_argument,  0,  'M'},
+            {"accelerator",         required_argument,  0,  'd'},
+            {"cuda-target",         required_argument,  0,  'r'},
+            {"print-rate",          required_argument,  0,  'R'},
+            {"num-pairs",           required_argument,  0,  'p'},
+            {"vary-window",         required_argument,  0,  'V'},
+            {"validation",          no_argument,        0,  'c'},
+            {"buffer-num",          required_argument,  0,  'b'},
+            {"validation-warmup",   required_argument,  0,  'u'},
     };
 
     enable_accel_support();
@@ -431,31 +441,45 @@ int process_options (int argc, char *argv[])
     if (options.bench == PT2PT) {
         if (accel_enabled) {
             if (options.subtype == BW) {
-                optstring = "+:x:i:t:m:d:W:hvb";
+                optstring = "+:x:i:t:m:d:W:hvbcu:";
             } else {
-                optstring = "+:x:i:m:d:hv";
+                optstring = "+:x:i:m:d:hvcu:";
             }
         } else{
             if (options.subtype == LAT_MT) {
-                optstring = "+:hvm:x:i:t:";
+                optstring = "+:hvm:x:i:t:cu:";
             } else if (options.subtype == LAT_MP) {
-                optstring = "+:hvm:x:i:t:";
+                optstring = "+:hvm:x:i:t:cu:";
             } else if (options.subtype == BW) {
-                optstring = "+:hvm:x:i:t:W:b:";
+                optstring = "+:hvm:x:i:t:W:b:cu:";
             } else {
-                optstring = "+:hvm:x:i:b:";
+                optstring = "+:hvm:x:i:b:cu:";
             }
         }
     } else if (options.bench == COLLECTIVE) {
-        if (options.subtype == LAT) { /* Blocking */
-            optstring = "+:hvfm:i:x:M:a:c:";
+        if (options.subtype == LAT ||
+                options.subtype == ALLTOALL ||
+                options.subtype == GATHER ||
+                options.subtype == REDUCE ||
+                options.subtype == SCATTER ||
+                options.subtype == REDUCE_SCATTER ||
+                options.subtype == BCAST) { /* Blocking */
+            optstring = "+:hvfm:i:x:M:a:cu:";
             if (accel_enabled) {
-                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:r:a:c:" : "+:d:hvfm:i:x:M:a:c:";
+                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:r:a:cu:" :
+                    "+:d:hvfm:i:x:M:a:cu:";
+            }
+        } else if (options.subtype == NBC) {
+            optstring = "+:hvfm:i:x:M:t:a:";
+            if (accel_enabled) {
+                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:t:r:a:" :
+                    "+:d:hvfm:i:x:M:t:a:";
             }
         } else { /* Non-Blocking */
-            optstring = "+:hvfm:i:x:M:t:a:c";
+            optstring = "+:hvfm:i:x:M:t:a:cu:";
             if (accel_enabled) {
-                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:t:r:a:c:" : "+:d:hvfm:i:x:M:t:a:c:";
+                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:t:r:a:cu:" :
+                    "+:d:hvfm:i:x:M:t:a:cu:";
             }
         }
     } else if (options.bench == ONE_SIDED) {
@@ -464,9 +488,10 @@ int process_options (int argc, char *argv[])
         } else {
             optstring = (accel_enabled) ? "+:w:s:hvm:d:x:i:" : "+:w:s:hvm:x:i:";
         }
-        
+
     } else if (options.bench == MBW_MR){
-        optstring = (accel_enabled) ? "p:W:R:x:i:m:d:Vhvb:" : "p:W:R:x:i:m:Vhvb:";
+        optstring = (accel_enabled) ? "p:W:R:x:i:m:d:Vhvb:cu:" :
+            "p:W:R:x:i:m:Vhvb:cu:";
     } else if (options.bench == OSHM || options.bench == UPC || options.bench == UPCXX) {
         optstring = ":hvfm:i:M:";
     } else {
@@ -504,6 +529,7 @@ int process_options (int argc, char *argv[])
             options.skip = BW_SKIP_SMALL;
             options.iterations_large = BW_LOOP_LARGE;
             options.skip_large = BW_SKIP_LARGE;
+            options.warmup_validation = VALIDATION_SKIP_DEFAULT;
             break;
         case LAT_MT:
             options.num_threads = DEF_NUM_THREADS;
@@ -514,6 +540,17 @@ int process_options (int argc, char *argv[])
             options.min_message_size = 0;
             options.sender_processes = DEF_NUM_PROCESSES;
         case LAT:
+        case GATHER:
+        case ALLTOALL:
+        case NBC_ALLTOALL:
+        case NBC_GATHER:
+        case NBC_REDUCE:
+        case NBC_SCATTER:
+        case NBC_BCAST:
+        case REDUCE:
+        case SCATTER:
+        case BCAST:
+        case REDUCE_SCATTER:
         case NBC:
             if (options.bench == COLLECTIVE) {
                 options.iterations = COLL_LOOP_SMALL;
@@ -529,6 +566,7 @@ int process_options (int argc, char *argv[])
             if (options.bench == PT2PT) {
                 options.min_message_size = 0;
             }
+            options.warmup_validation = VALIDATION_SKIP_DEFAULT;
             break;
         default:
             break;
@@ -589,7 +627,7 @@ int process_options (int argc, char *argv[])
                             bad_usage.optarg = optarg;
 
                             return PO_BAD_USAGE;
-                        } 
+                        }
                     }
                 }
                 break;
@@ -734,8 +772,22 @@ int process_options (int argc, char *argv[])
                 }
                 break;
             case 'c':
-                if (set_validate(atoi(optarg))) {
-                    bad_usage.message = "Invalid option or invalid argument";
+                options.validate = 1;
+                break;
+            case 'u':
+                if (set_num_warmup_validation(atoi(optarg))) {
+                    bad_usage.message = "Invalid Number of Validation Warmup "
+                        " Iterations";
+                    bad_usage.optarg = optarg;
+
+                    return PO_BAD_USAGE;
+                }
+                if (options.warmup_validation >  VALIDATION_SKIP_MAX) {
+                    bad_usage.message = "Number of Validation Warmup Iterations"
+                        "must be less than 10";
+                    bad_usage.optarg = optarg;
+
+                    return PO_BAD_USAGE;
                 }
                 break;
             case 'b':
@@ -758,6 +810,10 @@ int process_options (int argc, char *argv[])
                 bad_usage.opt = optopt;
                 return PO_BAD_USAGE;
         }
+    }
+
+    if (!options.validate) {
+        options.warmup_validation = 0;
     }
 
     if (accel_enabled) {
@@ -809,7 +865,7 @@ int process_options (int argc, char *argv[])
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
             }
             /* No need to check if '-d' is given */
-            if (NONE == options.accel) {
+            if (NONE == options.accel || options.bench == PT2PT) {
                 setAccel(options.src);
                 setAccel(options.dst);
             }
@@ -837,7 +893,7 @@ int setAccel(char buf_type)
                 bad_usage.message = "This argument is only supported for one-sided and pt2pt benchmarks";
                 return PO_BAD_USAGE;
             }
-            if (NONE == options.accel) {
+            if (NONE == options.accel || MANAGED == options.accel) {
 #if defined(_ENABLE_OPENACC_) && !defined(_ENABLE_CUDA_)
                 options.accel = OPENACC;
 #elif defined(_ENABLE_CUDA_)

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([OSU-Micro-Benchmarks], [5.8], [mvapich-discuss@cse.ohio-state.edu])
+AC_INIT([OSU-Micro-Benchmarks], [5.9], [mvapich-discuss@cse.ohio-state.edu])
 AC_CONFIG_SRCDIR([mpi/pt2pt/osu_latency.c])
 
 AM_INIT_AUTOMAKE([foreign])

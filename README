@@ -16,7 +16,7 @@ download the latest version of this package.
 
 OMB also contains ROCm, CUDA and OpenACC extensions to the benchmarks. CUDA
 extensions can be enabled by configuring OMB with --enable-cuda option as shown
-below. 
+below.
 
     ./configure CC=/path/to/mpicc
                 CXX=/path/to/mpicxx
@@ -98,28 +98,28 @@ osu_latency_mt - Multi-threaded Latency Test
     * and waits for a reply from the receiver process. The receiving process has
     * a variable number of receiving threads (set by default to 2), where each
     * thread calls MPI_Recv and upon receiving a message sends back a response
-    * of equal size. Many iterations are performed and the average one-way 
+    * of equal size. Many iterations are performed and the average one-way
     * latency numbers are reported. This test is available here.
     * "-t" option can be used to set the number of sender and receiver threads
            to be used in a benchmark. Examples:
-            -t 4        // receiver threads = 4 and sender threads = 1 
+            -t 4        // receiver threads = 4 and sender threads = 1
             -t 4:6      // sender threads = 4 and receiver threads = 6
-            -t 2:       // not defined 
+            -t 2:       // not defined
 
 osu_latency_mp - Multi-process Latency Test
     * The multi-process latency test performs a ping-pong test with a single
     * sender process and a single receiver process, both having one or more
     * child processes that are spawned using the fork() system call. In this test
     * the sending process(parent) sends a message of a given data size to the
-    * receiver(parent) process and waits for a reply from the receiver process. 
+    * receiver(parent) process and waits for a reply from the receiver process.
     * Both the sending and receiving process have a variable number of child
     * processes (set by default to 1 child process), where each child process
-    * sleeps for 2 seconds after the fork call and exits. The parent processes 
-    * carry out the ping-pong test where many iterations are performed and the 
+    * sleeps for 2 seconds after the fork call and exits. The parent processes
+    * carry out the ping-pong test where many iterations are performed and the
     * average one-way latency numbers are reported. This test is available here.
     * "-t" option can be used to set the number of sender and receiver processes
     * including the parent processes to be used in a benchmark.
-    * 
+    *
     * The purpose of this test is to check if the underlying MPI communication
     * runtime has taken care of fork safety even if the application has not.
     *
@@ -133,9 +133,9 @@ osu_latency_mp - Multi-process Latency Test
     * osu_latency_mp with other MPI libraries that do not support fork safety,
     * set the environment variables RDMAV_FORK_SAFE or IBV_FORK_SAFE to 1.
     * Examples:
-            -t 4        // receiver processes = 4 and sender processes = 1 
+            -t 4        // receiver processes = 4 and sender processes = 1
             -t 4:6      // sender processes = 4 and receiver processes = 6
-            -t 2:       // not defined 
+            -t 2:       // not defined
 
 osu_bw - Bandwidth Test
     * The bandwidth tests are carried out by having the sender sending out a
@@ -675,14 +675,14 @@ osu_oshm_put.c - Latency Test for OpenSHMEM Put Routine
     * barrier all after the test for each message size.
 
 osu_oshm_put_nb.c - Latency Test for OpenSHMEM Non-blocking Put Routine
-    * This benchmark measures the non-blocking latency of a shmem putmem_nbi 
-    * operation for different data sizes. The user is required to select 
-    * whether the communication buffers should be allocated in global 
-    * memory or heap memory, through a parameter. The test requires exactly 
-    * two PEs. PE 0 issues shmem putmem_nbi to write data at PE 1 and then calls 
-    * shmem quiet. This is repeated for a fixed number of iterations, depending 
-    * on the data size. The average latency per iteration is reported. 
-    * A few warm-up iterations are run without timing to ignore any start-up 
+    * This benchmark measures the non-blocking latency of a shmem putmem_nbi
+    * operation for different data sizes. The user is required to select
+    * whether the communication buffers should be allocated in global
+    * memory or heap memory, through a parameter. The test requires exactly
+    * two PEs. PE 0 issues shmem putmem_nbi to write data at PE 1 and then calls
+    * shmem quiet. This is repeated for a fixed number of iterations, depending
+    * on the data size. The average latency per iteration is reported.
+    * A few warm-up iterations are run without timing to ignore any start-up
     * overheads. Both PEs call shmem barrier all after the test for each message size.
 
 osu_oshm_get.c - Latency Test for OpenSHMEM Get Routine
@@ -708,27 +708,27 @@ osu_oshm_put_mr.c - Message Rate Test for OpenSHMEM Put Routine
 
 osu_oshm_put_mr_nb.c - Message Rate Test for Non-blocking OpenSHMEM Put Routine
     * This benchmark measures the aggregate uni-directional operation rate of
-    * OpenSHMEM Non-blocking Put between pairs of PEs, for different data sizes. 
-    * The user should select for communication buffers to be in global memory 
-    * and heap memory as with the earlier benchmarks. This test requires number 
+    * OpenSHMEM Non-blocking Put between pairs of PEs, for different data sizes.
+    * The user should select for communication buffers to be in global memory
+    * and heap memory as with the earlier benchmarks. This test requires number
     * of PEs to be even. The PEs are paired with PE 0 pairing with PE n/2 and so on,
     * where n is the total number of PEs. The first PE in each pair issues
     * back-to-back shmem putmem_nbi operations to its peer PE until the window
     * size. A call to shmem_quite is placed after the window loop to ensure
-    * completion of the issued operations. The total time for the non-blocking 
+    * completion of the issued operations. The total time for the non-blocking
     * put operations is measured and operation rate per second is reported.
     * All PEs call shmem barrier all after the test for each message size.
 
 osu_oshm_get_mr_nb.c - Message Rate Test for Non-blocking OpenSHMEM Get Routine
     * This benchmark measures the aggregate uni-directional operation rate of
-    * OpenSHMEM Non-blocking Get between pairs of PEs, for different data sizes. 
-    * The user should select for communication buffers to be in global memory 
-    * and heap memory as with the earlier benchmarks. This test requires number 
+    * OpenSHMEM Non-blocking Get between pairs of PEs, for different data sizes.
+    * The user should select for communication buffers to be in global memory
+    * and heap memory as with the earlier benchmarks. This test requires number
     * of PEs to be even. The PEs are paired with PE 0 pairing with PE n/2 and so on,
     * where n is the total number of PEs. The first PE in each pair issues
     * back-to-back shmem getmem_nbi operations to its peer PE until the window
     * size. A call to shmem_quite is placed after the window loop to ensure
-    * completion of the issued operations. The total time for the non-blocking 
+    * completion of the issued operations. The total time for the non-blocking
     * put operations is measured and operation rate per second is reported.
     * All PEs call shmem barrier all after the test for each message size.
 
@@ -748,7 +748,7 @@ osu_oshm_atomics.c - Latency and Operation Rate Test for OpenSHMEM Atomics Routi
     * benchmark and the first PE in each pair issues back-to-back atomic
     * operations of a type to its peer PE. The average latency per atomic
     * operation and the aggregate operation rate are reported.  This is
-    * repeated for each of fadd, finc, add, inc, cswap, swap, set, and fetch 
+    * repeated for each of fadd, finc, add, inc, cswap, swap, set, and fetch
     * routines.
 
 Collective OpenSHMEM Benchmarks
@@ -883,11 +883,11 @@ osu_hello.c - This is a simple hello world program. Users can take advantage of
 ROCm, CUDA and OpenACC Extensions to OMB
 ----------------------------------------
 CUDA Extensions to OMB can be enable by configuring the benchmark suite with
---enable-cuda option as shown below.  
+--enable-cuda option as shown below.
 
-    ./configure CC=/path/to/mpicc 
+    ./configure CC=/path/to/mpicc
                 CXX=/path/to/mpicxx
-                --enable-cuda 
+                --enable-cuda
                 --with-cuda-include=/path/to/cuda/include
                 --with-cuda-libpath=/path/to/cuda/lib
     make
@@ -917,8 +917,6 @@ MPI communication using buffers on AMD and NVIDIA GPU devices.
     osu_latency        - Latency Test
     osu_mbw_mr         - Multiple Bandwidth / Message Rate Test
     osu_multi_lat      - Multi-pair Latency Test
-    osu_latency_mt     - Multi-threaded Latency Test
-    osu_latency_mp     - Multi-process Latency Test
     osu_put_latency    - Latency Test for Put
     osu_get_latency    - Latency Test for Get
     osu_put_bw         - Bandwidth Test for Put
