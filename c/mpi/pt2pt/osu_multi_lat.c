@@ -129,18 +129,23 @@ static int multi_latency(int rank, int pairs)
 
     /*needed for the kernel loss calculations*/
     double t_lo=0.0;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     MPI_Status reqstat;
 
     for (size = options.min_message_size; size <= options.max_message_size;
             size = (size ? size * 2 : 1)) {
 
+        omb_ddt_size = omb_ddt_get_size(size);
         if (allocate_memory_pt2pt_mul_size(&s_buf, &r_buf, rank, pairs, size)) {
             /* Error allocating memory */
             MPI_CHECK(MPI_Finalize());
             exit(EXIT_FAILURE);
         }
 
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR, size);
         set_buffer_pt2pt(s_buf, rank, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, rank, options.accel, 'b', size);
 
@@ -180,10 +185,10 @@ static int multi_latency(int rank, int pairs)
                     }
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
 
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, partner, 1,
-                                MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, partner, 1,
-                                MPI_COMM_WORLD, &reqstat));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype,
+                                partner, 1, MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype,
+                                partner, 1, MPI_COMM_WORLD, &reqstat));
 #ifdef _ENABLE_CUDA_KERNEL_
                     if (options.src == 'M') {
                         touch_managed_src(r_buf, size);
@@ -203,16 +208,16 @@ static int multi_latency(int rank, int pairs)
                     }
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
 
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, partner, 1,
-                                MPI_COMM_WORLD, &reqstat));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype,
+                                partner, 1, MPI_COMM_WORLD, &reqstat));
 #ifdef _ENABLE_CUDA_KERNEL_
                     if (options.dst == 'M') {
                         touch_managed_dst(r_buf, size);
                     }
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
 
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, partner, 1,
-                                MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype,
+                                partner, 1, MPI_COMM_WORLD));
                 }
             }
             if (options.validate) {
@@ -226,15 +231,21 @@ static int multi_latency(int rank, int pairs)
 
         if (0 == rank) {
             double latency = (t_total * 1e6) / (2.0 * options.iterations);
+            fprintf(stdout, "%-*d", 10, size);
             if (options.validate) {
-                fprintf(stdout, "%-*d%*.*f%*s\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency, FIELD_WIDTH,
+                fprintf(stdout, "%*.*f%*s", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency, FIELD_WIDTH,
                         VALIDATION_STATUS(errors_reduced));
-                } else {
-                fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency);
-                }
+            } else {
+                fprintf(stdout, "%*.*f", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency);
+            }
+            if (options.omb_enable_ddt) {
+                fprintf(stdout, "%*d", FIELD_WIDTH, omb_ddt_transmit_size);
+            }
+            fprintf(stdout, "\n");
             fflush(stdout);
+            omb_ddt_free(&omb_ddt_datatype);
         }
 
         free_memory_pt2pt_mul(s_buf, r_buf, rank, pairs);

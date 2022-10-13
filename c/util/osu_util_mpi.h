@@ -146,3 +146,14 @@ int validate_collective(char *buffer, size_t size, int value1, int value2,
 int validate_reduce_scatter(float *buffer, size_t size, int* recvcounts,
                             int rank, int num_procs, enum accel_type type,
                             int iter);
+
+/*
+ * DDT 
+ */
+#define OMB_DDT_INDEXED_MAX_LENGTH 100
+#define OMB_DDT_FILE_LINE_MAX_LENGTH 500
+size_t omb_ddt_assign(MPI_Datatype *datatype, MPI_Datatype base_datatype,
+        size_t count);
+void omb_ddt_free(MPI_Datatype *datatype);
+size_t omb_ddt_get_size(size_t size);
+void append_stats_ddt(size_t omb_ddt_transmit_size);

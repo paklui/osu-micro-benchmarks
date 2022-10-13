@@ -31,6 +31,12 @@ print_header(int rank, int full)
         case MBW_MR :
         case PT2PT :
             if (0 == rank) {
+                if (options.omb_enable_ddt) {
+                    fprintf(stdout, "# Set Derived DataTypes block_length to"
+                            " %d, stride to %d\n",
+                            options.ddt_type_parameters.block_length,
+                            options.ddt_type_parameters.stride);
+                }
                 switch (options.accel) {
                     case CUDA:
                         printf(benchmark_header, "-CUDA");
@@ -66,10 +72,13 @@ print_header(int rank, int full)
                             fprintf(stdout, "%-*s%*s", 10, "# Size", FIELD_WIDTH, "Latency (us)");
                         }
                         if (options.validate && !(options.subtype == BW && options.bench == MBW_MR)){
-                            fprintf(stdout, "%*s\n", FIELD_WIDTH, "Validation");
-                        } else{
-                            fprintf(stdout, "\n");
+                            fprintf(stdout, "%*s", FIELD_WIDTH, "Validation");
                         }
+                        if (options.omb_enable_ddt && !(options.subtype == BW &&
+                                    options.bench == MBW_MR)){
+                            fprintf(stdout, "%*s", FIELD_WIDTH, "Transmit Size");
+                        }
+                        fprintf(stdout, "\n");
                         fflush(stdout);
                 }
             }
@@ -409,11 +418,15 @@ int process_options (int argc, char *argv[])
     extern int optind, optopt;
 
     char const * optstring = NULL;
+    char *temp_optstring = NULL;
     int c, ret = PO_OKAY;
 
     int option_index = 0;
+    char *ddt_type = NULL;
+    int omb_long_options_itr = OMB_LONG_OPTIONS_ARRAY_SIZE - 1;
 
-    static struct option long_options[] = {
+
+    static struct option long_options[OMB_LONG_OPTIONS_ARRAY_SIZE] = {
             {"help",                no_argument,        0,  'h'},
             {"version",             no_argument,        0,  'v'},
             {"full",                no_argument,        0,  'f'},
@@ -434,6 +447,7 @@ int process_options (int argc, char *argv[])
             {"validation",          no_argument,        0,  'c'},
             {"buffer-num",          required_argument,  0,  'b'},
             {"validation-warmup",   required_argument,  0,  'u'},
+            {"ddt",                 required_argument,  0,  'D'}
     };
 
     enable_accel_support();
@@ -441,21 +455,25 @@ int process_options (int argc, char *argv[])
     if (options.bench == PT2PT) {
         if (accel_enabled) {
             if (options.subtype == BW) {
-                optstring = "+:x:i:t:m:d:W:hvb:cu:";
+                optstring = "+:x:i:t:m:d:W:hvb:cu:D:";
             } else {
-                optstring = "+:x:i:m:d:hvcu:";
+                optstring = "+:x:i:m:d:hvcu:D:";
             }
         } else{
             if (options.subtype == LAT_MT) {
-                optstring = "+:hvm:x:i:t:cu:";
+                optstring = "+:hvm:x:i:t:cu:D:";
             } else if (options.subtype == LAT_MP) {
-                optstring = "+:hvm:x:i:t:cu:";
+                optstring = "+:hvm:x:i:t:cu:D:";
             } else if (options.subtype == BW) {
-                optstring = "+:hvm:x:i:t:W:b:cu:";
+                optstring = "+:hvm:x:i:t:W:b:cu:D:";
             } else {
-                optstring = "+:hvm:x:i:b:cu:";
+                optstring = "+:hvm:x:i:b:cu:D:";
             }
         }
+        long_options[omb_long_options_itr].name = "ddt";
+        long_options[omb_long_options_itr].has_arg = required_argument;
+        long_options[omb_long_options_itr].flag = 0;
+        long_options[omb_long_options_itr].val = 'D';
     } else if (options.bench == COLLECTIVE) {
         if (options.subtype == LAT ||
                 options.subtype == ALLTOALL ||
@@ -464,10 +482,27 @@ int process_options (int argc, char *argv[])
                 options.subtype == SCATTER ||
                 options.subtype == REDUCE_SCATTER ||
                 options.subtype == BCAST) { /* Blocking */
-            optstring = "+:hvfm:i:x:M:a:cu:";
-            if (accel_enabled) {
-                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:r:a:cu:" :
-                    "+:d:hvfm:i:x:M:a:cu:";
+            if (options.subtype == GATHER ||
+                    options.subtype == SCATTER ||
+                    options.subtype == ALLTOALL ||
+                    options.subtype == BCAST ){
+                optstring = "+:hvfm:i:x:M:a:cu:D:";
+                if (accel_enabled) {
+                    optstring = (CUDA_KERNEL_ENABLED) ? 
+                        "+:d:hvfm:i:x:M:r:a:cu:D:" :
+                        "+:d:hvfm:i:x:M:a:cu:D:";
+                }
+                long_options[omb_long_options_itr].name = "ddt";
+                long_options[omb_long_options_itr].has_arg = required_argument;
+                long_options[omb_long_options_itr].flag = 0;
+                long_options[omb_long_options_itr].val = 'D';
+            } else {
+                optstring = "+:hvfm:i:x:M:a:cu:";
+                if (accel_enabled) {
+                    optstring = (CUDA_KERNEL_ENABLED) ? 
+                        "+:d:hvfm:i:x:M:r:a:cu:" :
+                        "+:d:hvfm:i:x:M:a:cu:";
+                }
             }
         } else if (options.subtype == NBC) {
             optstring = "+:hvfm:i:x:M:t:a:";
@@ -476,10 +511,27 @@ int process_options (int argc, char *argv[])
                     "+:d:hvfm:i:x:M:t:a:";
             }
         } else { /* Non-Blocking */
-            optstring = "+:hvfm:i:x:M:t:a:cu:";
-            if (accel_enabled) {
-                optstring = (CUDA_KERNEL_ENABLED) ? "+:d:hvfm:i:x:M:t:r:a:cu:" :
-                    "+:d:hvfm:i:x:M:t:a:cu:";
+            if (options.subtype == NBC_GATHER ||
+                    options.subtype == NBC_ALLTOALL || 
+                    options.subtype == NBC_SCATTER ||  
+                    options.subtype == NBC_BCAST) {
+                optstring = "+:hvfm:i:x:M:t:a:cu:D:";
+                if (accel_enabled) {
+                    optstring = (CUDA_KERNEL_ENABLED) ? 
+                        "+:d:hvfm:i:x:M:t:r:a:cu:D:" :
+                        "+:d:hvfm:i:x:M:t:a:cu:D:";
+                }
+                long_options[omb_long_options_itr].name = "ddt";
+                long_options[omb_long_options_itr].has_arg = required_argument;
+                long_options[omb_long_options_itr].flag = 0;
+                long_options[omb_long_options_itr].val = 'D';
+            } else {
+                optstring = "+:hvfm:i:x:M:t:a:cu:";
+                if (accel_enabled) {
+                    optstring = (CUDA_KERNEL_ENABLED) ?
+                        "+:d:hvfm:i:x:M:t:r:a:cu:" :
+                        "+:d:hvfm:i:x:M:t:a:cu:";
+                }
             }
         }
     } else if (options.bench == ONE_SIDED) {
@@ -490,8 +542,12 @@ int process_options (int argc, char *argv[])
         }
 
     } else if (options.bench == MBW_MR){
-        optstring = (accel_enabled) ? "p:W:R:x:i:m:d:Vhvb:cu:" :
-            "p:W:R:x:i:m:Vhvb:cu:";
+        optstring = (accel_enabled) ? "p:W:R:x:i:m:d:Vhvb:cu:D:" :
+            "p:W:R:x:i:m:Vhvb:cu:D:";
+        long_options[omb_long_options_itr].name = "ddt";
+        long_options[omb_long_options_itr].has_arg = required_argument;
+        long_options[omb_long_options_itr].flag = 0;
+        long_options[omb_long_options_itr].val = 'D';
     } else if (options.bench == OSHM || options.bench == UPC || options.bench == UPCXX) {
         optstring = ":hvfm:i:M:";
     } else {
@@ -519,7 +575,9 @@ int process_options (int argc, char *argv[])
     options.print_rate = 1;
     options.validate = 0;
     options.buf_num = SINGLE;
-
+    options.omb_enable_ddt = 0;
+    options.ddt_type_parameters.block_length = OMB_DDT_BLOCK_LENGTH_DEFAULT;
+    options.ddt_type_parameters.stride = OMB_DDT_STRIDE_DEFAULT;
     options.src = 'H';
     options.dst = 'H';
 
@@ -773,6 +831,12 @@ int process_options (int argc, char *argv[])
                 break;
             case 'c':
                 options.validate = 1;
+                if (options.omb_enable_ddt) {
+                    bad_usage.message = "Derived data type does not support"
+                        " validation";
+                    bad_usage.optarg = optarg;
+                    return PO_BAD_USAGE;
+                }
                 break;
             case 'u':
                 if (set_num_warmup_validation(atoi(optarg))) {
@@ -800,6 +864,16 @@ int process_options (int argc, char *argv[])
                     bad_usage.optarg = optarg;
                     return PO_BAD_USAGE;
                 }
+                break;
+            case 'D':
+                options.omb_enable_ddt = 1;
+                if (options.validate) {
+                    bad_usage.message = "Derived data type does not support"
+                        " validation";
+                    bad_usage.optarg = optarg;
+                    return PO_BAD_USAGE;
+                }
+                omb_ddt_process_options(optarg);
                 break;
             case ':':
                 bad_usage.message = "Option Missing Required Argument";

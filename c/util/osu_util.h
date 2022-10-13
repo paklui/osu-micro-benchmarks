@@ -92,6 +92,15 @@
 #   define FLOAT_PRECISION 2
 #endif
 
+#define OMB_CHECK_NULL_AND_EXIT(var, msg)                       \
+do {                                                            \
+    if (NULL == var) {                                          \
+        fprintf(stderr, "[%s:%d] Failed with message '%s'\n",   \
+         __FILE__, __LINE__, msg);                              \
+        exit(EXIT_FAILURE);                                     \
+    }                                                           \
+} while (0)                                                     
+
 #define CHECK(stmt)                                              \
 do {                                                             \
    int errno = (stmt);                                           \
@@ -153,6 +162,7 @@ enum mpi_req{
     MAX_REQ_NUM = 1000
 };
 
+#define OMB_LONG_OPTIONS_ARRAY_SIZE 22
 #define BW_LOOP_SMALL 100
 #define BW_SKIP_SMALL 10
 #define BW_LOOP_LARGE 20
@@ -174,7 +184,9 @@ enum mpi_req{
 #define OSHM_LOOP_ATOMIC 500
 #define VALIDATION_SKIP_DEFAULT 5
 #define VALIDATION_SKIP_MAX 10
-
+#define OMB_DDT_STRIDE_DEFAULT 8
+#define OMB_DDT_BLOCK_LENGTH_DEFAULT 4
+#define OMB_DDT_FILE_PATH_MAX_LENGTH 40
 #define MAX_MESSAGE_SIZE (1 << 22)
 #define MAX_MSG_SIZE_PT2PT (1<<20)
 #define MAX_MSG_SIZE_COLL (1<<20)
@@ -272,6 +284,20 @@ enum buffer_num {
     MULTIPLE
 };
 
+/*ddt types*/
+enum omb_ddt_types_t {
+    OMB_DDT_CONTIGUOUS,
+    OMB_DDT_VECTOR,
+    OMB_DDT_INDEXED
+};
+
+/*ddt type parameters*/
+typedef struct omb_ddt_type_parameters {
+    size_t block_length;
+    size_t stride;
+    char filepath[OMB_DDT_FILE_PATH_MAX_LENGTH];
+} omb_ddt_type_parameters_t;
+
 /*variables*/
 extern char const *win_info[20];
 extern char const *sync_info[20];
@@ -318,6 +344,9 @@ struct options_t {
     int pairs;
     int validate;
     enum buffer_num buf_num;
+    int omb_enable_ddt;
+    enum omb_ddt_types_t ddt_type;
+    omb_ddt_type_parameters_t ddt_type_parameters;
 };
 
 struct bad_usage_t{
@@ -338,6 +367,7 @@ extern struct bad_usage_t bad_usage;
 extern int process_one_sided_options (int opt, char *arg);
 int process_options (int argc, char *argv[]);
 int setAccel(char);
+void omb_ddt_process_options(char *optarg);
 
 /*
  * Set Benchmark Properties

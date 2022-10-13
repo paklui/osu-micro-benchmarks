@@ -151,6 +151,9 @@ void communicate(int myid)
     char *s_buf, *r_buf;
     MPI_Status reqstat;
     int local_errors = 0;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     if (allocate_memory_pt2pt(&s_buf, &r_buf, myid)) {
         /* Error allocating memory */
@@ -160,6 +163,9 @@ void communicate(int myid)
 
     for (size = options.min_message_size; size <= options.max_message_size;
             size = (size ? size * 2 : 1)) {
+        omb_ddt_size = omb_ddt_get_size(size);
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
@@ -180,10 +186,10 @@ void communicate(int myid)
                     if (i >= options.skip && j == options.warmup_validation) {
                         t_start = MPI_Wtime();
                     }
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, 1,
-                            MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, 1,
-                            MPI_COMM_WORLD, &reqstat));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype, 1,
+                                1, MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype, 1,
+                                1, MPI_COMM_WORLD, &reqstat));
                     if (i >= options.skip && j == options.warmup_validation) {
                         t_end = MPI_Wtime();
                         t_total += (t_end - t_start);
@@ -201,10 +207,10 @@ void communicate(int myid)
                 }
                 for (j = 0; j <= options.warmup_validation; j++) {
                     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 0, 1,
-                            MPI_COMM_WORLD, &reqstat));
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 0, 1,
-                            MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype, 0,
+                                1, MPI_COMM_WORLD, &reqstat));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype, 0,
+                                1, MPI_COMM_WORLD));
                 }
                 if (options.validate) {
                     local_errors += validate_data(r_buf, size, 1, options.accel,
@@ -220,16 +226,20 @@ void communicate(int myid)
 
         if (myid == 0) {
             double latency = t_total * 1e6 / (2.0 * options.iterations);
+            fprintf(stdout, "%-*d", 10, size);
             if (options.validate) {
-                fprintf(stdout, "%-*d%*.*f%*s\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency, FIELD_WIDTH,
-                        VALIDATION_STATUS(errors));
+                fprintf(stdout, "%*.*f%*s", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency, FIELD_WIDTH, VALIDATION_STATUS(errors));
             } else {
-                fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency);
+                fprintf(stdout, "%*.*f", 10, FLOAT_PRECISION, latency);
             }
+            if (options.omb_enable_ddt) {
+                fprintf(stdout, "%*d", FIELD_WIDTH, omb_ddt_transmit_size);
+            }
+            fprintf(stdout, "\n");
             fflush(stdout);
         }
+        omb_ddt_free(&omb_ddt_datatype);
         if (options.validate) {
             if (0 != errors) {
                 break;

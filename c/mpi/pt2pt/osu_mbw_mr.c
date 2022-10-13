@@ -31,16 +31,16 @@ void touch_managed_dst(char **, int, int);
 double calculate_total(double, double, double, int);
 
 int errors_reduced = 0;
+size_t omb_ddt_transmit_size = 0;
 
 int main(int argc, char *argv[])
 {
     char **s_buf, **r_buf;
     int numprocs, rank;
     int c, curr_size;
-
     set_header(HEADER);
     set_benchmark_name("osu_mbw_mr");
-
+    double message_rate = 0.0;
     options.bench = MBW_MR;
     options.subtype = BW;
 
@@ -158,10 +158,12 @@ int main(int argc, char *argv[])
             }
 
             if (options.validate) {
-                fprintf(stdout, "%*s\n", FIELD_WIDTH, "Validation");
-            } else {
-                fprintf(stdout, "\n");
+                fprintf(stdout, "%*s", FIELD_WIDTH, "Validation");
             }
+            if (options.omb_enable_ddt) {
+                fprintf(stdout, "%*s", FIELD_WIDTH, "Transmit Size");
+            }
+            fprintf(stdout, "\n");
         }
 
         fflush(stdout);
@@ -255,9 +257,15 @@ int main(int argc, char *argv[])
                 fprintf(stdout, "%-7d", curr_size);
 
                 for (i = 0; i < WINDOW_SIZES_COUNT; i++) {
-                    double rate = 1e6 * bandwidth_results[c][i] / curr_size;
+                    if (options.omb_enable_ddt) {
+                        message_rate = 1e6 * bandwidth_results[c][i] /
+                            omb_ddt_transmit_size;
+                    } else {
+                        message_rate = 1e6 * bandwidth_results[c][i] /
+                            curr_size;
+                    }
 
-                    fprintf(stdout, "  %10.2f", rate);
+                    fprintf(stdout, "  %10.2f", message_rate);
                 }
 
                 fprintf(stdout, "\n");
@@ -287,16 +295,20 @@ int main(int argc, char *argv[])
                    s_buf, r_buf);
 
            if (rank == 0) {
-               rate = 1e6 * bw / curr_size;
+               if (options.omb_enable_ddt) {
+                   rate = 1e6 * bw / omb_ddt_transmit_size;
+               } else {
+                   rate = 1e6 * bw / curr_size;
+               }
 
                if (options.print_rate) {
                    if (options.validate) {
-                        fprintf(stdout, "%-*d%*.*f%*.*f%*s\n", 10, curr_size,
+                        fprintf(stdout, "%-*d%*.*f%*.*f%*s", 10, curr_size,
                                 FIELD_WIDTH, FLOAT_PRECISION, bw, FIELD_WIDTH,
                                 FLOAT_PRECISION, rate, FIELD_WIDTH,
                                 VALIDATION_STATUS(errors_reduced));
                    } else {
-                        fprintf(stdout, "%-*d%*.*f%*.*f\n", 10, curr_size,
+                        fprintf(stdout, "%-*d%*.*f%*.*f", 10, curr_size,
                                 FIELD_WIDTH, FLOAT_PRECISION, bw, FIELD_WIDTH,
                                 FLOAT_PRECISION, rate);
                    }
@@ -304,15 +316,18 @@ int main(int argc, char *argv[])
 
                else {
                    if (options.validate) {
-                        fprintf(stdout, "%-*d%*.*f%*s\n", 10, curr_size,
+                        fprintf(stdout, "%-*d%*.*f%*s", 10, curr_size,
                                 FIELD_WIDTH, FLOAT_PRECISION, bw, FIELD_WIDTH,
                                 VALIDATION_STATUS(errors_reduced));
                    } else {
-                        fprintf(stdout, "%-*d%*.*f\n", 10, curr_size,
+                        fprintf(stdout, "%-*d%*.*f", 10, curr_size,
                                 FIELD_WIDTH, FLOAT_PRECISION, bw);
                    }
-
                }
+               if (options.omb_enable_ddt) {
+                   fprintf(stdout, "%*d", FIELD_WIDTH, omb_ddt_transmit_size);
+               }
+               fprintf(stdout, "\n");
            }
 
             if (options.validate) {
@@ -354,9 +369,13 @@ int main(int argc, char *argv[])
 double calc_bw(int rank, int size, int num_pairs, int window_size, char **s_buf,
         char **r_buf)
 {
-    double t_start = 0, t_end = 0, t = 0, bw = 0, t_lo = 0.0;
+    double t_start = 0, t_end = 0, t = 0, bw = 0, t_lo = 0.0, tmp_total = 0.0;
     int i, j, k, target;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
 
+    omb_ddt_size = omb_ddt_get_size(size);
+    omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR, size);
     if (options.buf_num == SINGLE) {
         set_buffer_pt2pt(s_buf[0], rank, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf[0], rank, options.accel, 'b', size);
@@ -417,8 +436,9 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char **s_buf,
 
                 for (j = 0; j < window_size; j++) {
                     if (options.buf_num == SINGLE) {
-                        MPI_CHECK(MPI_Isend(s_buf[0], size, MPI_CHAR, target,
-                                    100, MPI_COMM_WORLD, mbw_request + j));
+                        MPI_CHECK(MPI_Isend(s_buf[0], omb_ddt_size,
+                                    omb_ddt_datatype, target, 100,
+                                    MPI_COMM_WORLD, mbw_request + j));
                     } else {
                         MPI_CHECK(MPI_Isend(s_buf[j], size, MPI_CHAR, target,
                                     100, MPI_COMM_WORLD, mbw_request + j));
@@ -455,8 +475,9 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char **s_buf,
 
                 for (j = 0; j < window_size; j++) {
                     if (options.buf_num == SINGLE) {
-                        MPI_CHECK(MPI_Irecv(r_buf[0], size, MPI_CHAR, target,
-                                    100, MPI_COMM_WORLD, mbw_request + j));
+                        MPI_CHECK(MPI_Irecv(r_buf[0], omb_ddt_size,
+                                    omb_ddt_datatype, target, 100,
+                                    MPI_COMM_WORLD, mbw_request + j));
                     } else {
                         MPI_CHECK(MPI_Irecv(r_buf[j], size, MPI_CHAR, target,
                                     100, MPI_COMM_WORLD, mbw_request + j));
@@ -498,10 +519,14 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char **s_buf,
     }
 
     if (rank == 0) {
-        double tmp = size / 1e6 * num_pairs;
-
-        tmp = tmp *  options.iterations * window_size;
-        bw = tmp / t;
+        omb_ddt_free(&omb_ddt_datatype);
+        if (options.omb_enable_ddt) {
+            tmp_total = omb_ddt_transmit_size / 1e6 * num_pairs;
+        } else {
+            tmp_total = size / 1e6 * num_pairs;
+        }
+        tmp_total = tmp_total *  options.iterations * window_size;
+        bw = tmp_total / t;
 
         return bw;
     }

@@ -28,6 +28,10 @@ main (int argc, char *argv[])
     int window_size = 64;
     int po_ret = 0;
     int errors = 0;
+    double tmp_total = 0.0;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
     options.bench = PT2PT;
     options.subtype = BW;
 
@@ -126,6 +130,9 @@ main (int argc, char *argv[])
     /* Bandwidth test */
     for (size = options.min_message_size; size <= options.max_message_size;
             size *= 2) {
+        omb_ddt_size = omb_ddt_get_size(size);
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         if (options.buf_num == MULTIPLE) {
             for (i = 0; i < window_size; i++) {
                 if (allocate_memory_pt2pt_size(&s_buf[i], &r_buf[i], myid,
@@ -186,11 +193,13 @@ main (int argc, char *argv[])
 
                     for (j = 0; j < window_size; j++) {
                         if (options.buf_num == SINGLE) {
-                            MPI_CHECK(MPI_Isend(s_buf[0], size, MPI_CHAR, 1,
-                                        100, MPI_COMM_WORLD, request + j));
+                            MPI_CHECK(MPI_Isend(s_buf[0], omb_ddt_size,
+                                        omb_ddt_datatype, 1, 100,
+                                        MPI_COMM_WORLD, request + j));
                         } else {
-                            MPI_CHECK(MPI_Isend(s_buf[j], size, MPI_CHAR, 1,
-                                        100, MPI_COMM_WORLD, request + j));
+                            MPI_CHECK(MPI_Isend(s_buf[j], omb_ddt_size,
+                                        omb_ddt_datatype, 1, 100,
+                                        MPI_COMM_WORLD, request + j));
                         }
                     }
                     MPI_CHECK(MPI_Waitall(window_size, request, reqstat));
@@ -224,11 +233,13 @@ main (int argc, char *argv[])
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
                     for (j = 0; j < window_size; j++) {
                         if (options.buf_num == SINGLE) {
-                            MPI_CHECK(MPI_Irecv(r_buf[0], size, MPI_CHAR, 0,
-                                        100, MPI_COMM_WORLD, request + j));
+                            MPI_CHECK(MPI_Irecv(r_buf[0], omb_ddt_size,
+                                        omb_ddt_datatype, 0, 100,
+                                        MPI_COMM_WORLD, request + j));
                         } else {
-                            MPI_CHECK(MPI_Irecv(r_buf[j], size, MPI_CHAR, 0,
-                                        100, MPI_COMM_WORLD, request + j));
+                            MPI_CHECK(MPI_Irecv(r_buf[j], omb_ddt_size,
+                                        omb_ddt_datatype, 0, 100,
+                                        MPI_COMM_WORLD, request + j));
                         }
                     }
                     MPI_CHECK(MPI_Waitall(window_size, request, reqstat));
@@ -259,18 +270,28 @@ main (int argc, char *argv[])
         }
 
         if (myid == 0) {
-            double tmp = size / 1e6 * options.iterations * window_size;
+            if (options.omb_enable_ddt) {
+                tmp_total = omb_ddt_transmit_size / 1e6 * options.iterations *
+                    window_size;
+            } else {
+                tmp_total = size / 1e6 * options.iterations * window_size;
+            }
+            fprintf(stdout, "%-*d", 10, size);
             if (options.validate) {
-                fprintf(stdout, "%-*d%*.*f%*s\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, tmp / t_total, FIELD_WIDTH,
+                fprintf(stdout, "%*.*f%*s", FIELD_WIDTH, FLOAT_PRECISION,
+                        tmp_total / t_total, FIELD_WIDTH,
                         VALIDATION_STATUS(errors));
             } else{
-                fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, tmp / t_total);
+                fprintf(stdout, "%*.*f", FIELD_WIDTH, FLOAT_PRECISION,
+                        tmp_total / t_total);
             }
+            if (options.omb_enable_ddt) {
+                fprintf(stdout, "%*d", FIELD_WIDTH, omb_ddt_transmit_size);
+            }
+            fprintf(stdout, "\n");
             fflush(stdout);
         }
-
+        omb_ddt_free(&omb_ddt_datatype);
         if (options.buf_num == MULTIPLE) {
             for (i = 0; i < window_size; i++) {
                 free_memory(s_buf[i], r_buf[i], myid);

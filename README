@@ -1024,3 +1024,41 @@ It can be used as follows:
     mpirun_rsh -np 2 -hostfile hostfile MV2_USE_ROCM=1 get_local_rank \
         ./osu_latency D D
 
+Support for Derived Data Types
+------------------------------
+The following benchmarks have been extended to support MPI derived data types in
+addition to the communication performance.
+
+    osu_bibw           - Bidirectional Bandwidth Test
+    osu_bw             - Bandwidth Test
+    osu_latency        - Latency Test
+    osu_mbw_mr         - Multiple Bandwidth / Message Rate Test
+    osu_multi_lat      - Multi-pair Latency Test
+    osu_latency_mt     - Multi-threaded Latency Test
+    osu_latency_mp     - Multi-process Latency Test
+    osu_allgather      - MPI_Allgather Latency Test(*)
+    osu_allgatherv     - MPI_Allgatherv Latency Test
+    osu_alltoall       - MPI_Alltoall Latency Test
+    osu_alltoallv      - MPI_Alltoallv Latency Test
+    osu_bcast          - MPI_Bcast Latency Test
+    osu_gather         - MPI_Gather Latency Test(*)
+    osu_gatherv        - MPI_Gatherv Latency Test
+    osu_scatter        - MPI_Scatter Latency Test(*)
+    osu_scatterv       - MPI_Scatterv Latency Test
+    osu_iallgather     - MPI_Iallgather Latency Test
+    osu_iallgatherv    - MPI_Iallgatherv Latency Test
+    osu_ialltoall      - MPI_Ialltoall Latency Test
+    osu_ialltoallv     - MPI_Ialltoallv Latency Test
+    osu_ialltoallw     - MPI_Ialltoallw Latency Test
+    osu_ibcast         - MPI_Ibcast Latency Test
+    osu_igather        - MPI_Igather Latency Test
+    osu_igatherv       - MPI_Igatherv Latency Test
+    osu_iscatter       - MPI_Iscatter Latency Test
+    osu_iscatterv      - MPI_Iscatterv Latency Test
+    * Additionally, the benchmarks offer following options:
+    * "-D" option can be used to enable DDT support
+    *      "-D cont" for contiguous DDT support
+    *      "-D vect:[stride]:[block_length]" for vector DDT support
+    *           Example: -D vect:8:4
+    *      "-D indx:[ddt file path]" for index DDT support
+    *           Example: -D indx:ddt_sample.txt

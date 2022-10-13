@@ -1,3 +1,47 @@
+OSU Micro Benchmarks v6.1 (09/16/2022)
+
+* New Features & Enhancements
+    - Add support for derived data types in mpi pt2pt benchmarks
+        * Enabled with the `-D` option
+        * Supports contiguous, vector, and indexed data types
+        * Benchmarks supported
+            * osu_bibw
+            * osu_bw
+            * osu_mbw_mr
+            * osu_latency
+            * osu_multi_lat
+    - Add support for derived data types in mpi blocking and non-blocking
+      collective benchmarks
+        * Enabled with the `-D` option
+        * Supports contiguous, vector, and indexed data types
+        * Blocking benchmarks supported
+            * osu_allgather
+            * osu_allgatherv
+            * osu_alltoall
+            * osu_alltoallv
+            * osu_bcast
+            * osu_gather
+            * osu_gatherv
+            * osu_scatter
+            * osu_scatterv
+        * Non-Blocking benchmarks supported
+            * osu_iallgather
+            * osu_iallgatherv
+            * osu_ialltoall
+            * osu_ialltoallv
+            * osu_ialltoallw
+            * osu_ibcast
+            * osu_igather
+            * osu_igatherv
+            * osu_iscatter
+            * osu_iscatterv
+
+* Bug Fixes (since v6.0)
+    - Add support for data validation for ROCm benchmarks
+        * Thanks to Amir Shehata @ORNL for the report and initial patch
+    - Correct the version number in the released version
+        * Thanks to Adam Goldman @Intel for the report
+
 OSU Micro Benchmarks v6.0 (08/16/2022)
 
 * New Features & Enhancements

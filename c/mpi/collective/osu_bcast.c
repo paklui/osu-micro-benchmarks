@@ -22,6 +22,9 @@ int main(int argc, char *argv[])
     int errors = 0, local_errors = 0;
     options.bench = COLLECTIVE;
     options.subtype = BCAST;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     set_header(HEADER);
     set_benchmark_name("osu_bcast");
@@ -85,26 +88,29 @@ int main(int argc, char *argv[])
 
     for (size = options.min_message_size; size <= options.max_message_size;
             size *= 2) {
+        omb_ddt_size = omb_ddt_get_size(size);
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
         }
 
         timer = 0.0;
-
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         for (i = 0; i < options.iterations + options.skip; i++) {
             if (options.validate) {
                 set_buffer_validation(buffer, NULL, size, options.accel, i);
                 for (j = 0; j < options.warmup_validation; j++) {
                     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Bcast(buffer, size, MPI_CHAR, 0,
-                                MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Bcast(buffer, omb_ddt_size, omb_ddt_datatype,
+                                0, MPI_COMM_WORLD));
                 }
                 MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
             }
 
             t_start = MPI_Wtime();
-            MPI_CHECK(MPI_Bcast(buffer, size, MPI_CHAR, 0, MPI_COMM_WORLD));
+            MPI_CHECK(MPI_Bcast(buffer, omb_ddt_size, omb_ddt_datatype, 0,
+                        MPI_COMM_WORLD));
             t_stop = MPI_Wtime();
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
@@ -141,6 +147,8 @@ int main(int argc, char *argv[])
         } else {
             print_stats(rank, size, avg_time, min_time, max_time);
         }
+        append_stats_ddt(omb_ddt_transmit_size);
+        omb_ddt_free(&omb_ddt_datatype);
         if (0 != errors) {
             break;
         }

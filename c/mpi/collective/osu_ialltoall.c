@@ -25,6 +25,9 @@ int main(int argc, char *argv[])
 
     MPI_Request request;
     MPI_Status status;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     char *sendbuf=NULL;
     char *recvbuf=NULL;
@@ -107,6 +110,7 @@ int main(int argc, char *argv[])
 
     for(size = options.min_message_size; size <= options.max_message_size;
             size *= 2) {
+        omb_ddt_size = omb_ddt_get_size(size);
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
@@ -115,24 +119,25 @@ int main(int argc, char *argv[])
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
         timer = 0.0;
-
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         for(i = 0; i < options.iterations + options.skip; i++) {
             if (options.validate) {
                 set_buffer_validation(sendbuf, recvbuf, size, options.accel, i);
                 for (j = 0; j < options.warmup_validation; j++) {
                     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Ialltoall(sendbuf, size, MPI_CHAR,
-                                recvbuf, size, MPI_CHAR,
-                                MPI_COMM_WORLD, &request));
+                    MPI_CHECK(MPI_Ialltoall(sendbuf, omb_ddt_size,
+                                omb_ddt_datatype, recvbuf, omb_ddt_size,
+                                omb_ddt_datatype, MPI_COMM_WORLD, &request));
                     MPI_CHECK(MPI_Wait(&request,&status));
                 }
                 MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
             }
 
             t_start = MPI_Wtime();
-            MPI_CHECK(MPI_Ialltoall(sendbuf, size, MPI_CHAR,
-                         recvbuf, size, MPI_CHAR,
-                         MPI_COMM_WORLD, &request));
+            MPI_CHECK(MPI_Ialltoall(sendbuf, omb_ddt_size, omb_ddt_datatype,
+                        recvbuf, omb_ddt_size, omb_ddt_datatype, MPI_COMM_WORLD,
+                        &request));
             MPI_CHECK(MPI_Wait(&request,&status));
 
             t_stop = MPI_Wtime();
@@ -170,9 +175,9 @@ int main(int argc, char *argv[])
                 set_buffer_validation(sendbuf, recvbuf, size, options.accel, i);
                 for (j = 0; j < options.warmup_validation; j++) {
                     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Ialltoall(sendbuf, size, MPI_CHAR,
-                                recvbuf, size, MPI_CHAR,
-                                MPI_COMM_WORLD, &request));
+                    MPI_CHECK(MPI_Ialltoall(sendbuf, omb_ddt_size,
+                                omb_ddt_datatype, recvbuf, omb_ddt_size,
+                                omb_ddt_datatype, MPI_COMM_WORLD, &request));
                     MPI_CHECK(MPI_Wait(&request,&status));
                 }
                 MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
@@ -181,9 +186,9 @@ int main(int argc, char *argv[])
             t_start = MPI_Wtime();
 
             init_time = MPI_Wtime();
-            MPI_CHECK(MPI_Ialltoall(sendbuf, size, MPI_CHAR,
-                         recvbuf, size, MPI_CHAR,
-                         MPI_COMM_WORLD, &request));
+            MPI_CHECK(MPI_Ialltoall(sendbuf, omb_ddt_size, omb_ddt_datatype,
+                        recvbuf, omb_ddt_size, omb_ddt_datatype, MPI_COMM_WORLD,
+                        &request));
             init_time = MPI_Wtime() - init_time;
 
             tcomp = MPI_Wtime();
@@ -224,7 +229,8 @@ int main(int argc, char *argv[])
                                   test_total, tcomp_total,
                                   wait_total, init_total,
                                   errors);
-
+        append_stats_ddt(omb_ddt_transmit_size);
+        omb_ddt_free(&omb_ddt_datatype);
         if (0 != errors) {
             break;
         }

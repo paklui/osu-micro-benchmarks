@@ -35,6 +35,9 @@ int main(int argc, char *argv[])
 
     options.bench = COLLECTIVE;
     options.subtype = NBC_ALLTOALL;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     po_ret = process_options(argc, argv);
 
@@ -133,6 +136,7 @@ int main(int argc, char *argv[])
 
     for (size = options.min_message_size; size <= options.max_message_size;
             size *= 2) {
+        omb_ddt_size = omb_ddt_get_size(size);
         if (size > LARGE_MESSAGE_SIZE) {
             options.skip = options.skip_large;
             options.iterations = options.iterations_large;
@@ -140,21 +144,23 @@ int main(int argc, char *argv[])
         else {
             options.skip = options.skip_large;
         }
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
+
 
         disp =0;
         for ( i = 0; i < numprocs; i++) {
-            recvcounts[i] = size;
-            sendcounts[i] = size;
+            recvcounts[i] = omb_ddt_size;
+            sendcounts[i] = omb_ddt_size;
             rdispls[i] = disp;
             sdispls[i] = disp;
-            disp += size;
-            stypes[i] = MPI_CHAR;
-            rtypes[i] = MPI_CHAR;
+            disp += omb_ddt_size;
+            stypes[i] = omb_ddt_datatype;
+            rtypes[i] = omb_ddt_datatype;
         }
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
         timer = 0.0;
-
         for (i = 0; i < options.iterations + options.skip; i++) {
 
             if (options.validate) {
@@ -198,11 +204,11 @@ int main(int argc, char *argv[])
 
         disp =0;
         for ( i = 0; i < numprocs; i++) {
-            recvcounts[i] = size;
-            sendcounts[i] = size;
+            recvcounts[i] = omb_ddt_size;
+            sendcounts[i] = omb_ddt_size;
             rdispls[i] = disp;
             sdispls[i] = disp;
-            disp += size;
+            disp += omb_ddt_size;
 
         }
 
@@ -270,7 +276,8 @@ int main(int argc, char *argv[])
                                   test_total, tcomp_total,
                                   wait_total, init_total,
                                   errors);
-
+        append_stats_ddt(omb_ddt_transmit_size);
+        omb_ddt_free(&omb_ddt_datatype);
         if (0 != errors) {
             break;
         }

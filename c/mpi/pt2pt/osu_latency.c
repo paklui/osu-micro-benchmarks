@@ -27,7 +27,9 @@ main (int argc, char *argv[])
     double t_start = 0.0, t_end = 0.0, t_lo = 0.0, t_total = 0.0;
     int po_ret = 0;
     int errors = 0;
-
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
     options.bench = PT2PT;
     options.subtype = LAT;
 
@@ -108,7 +110,7 @@ main (int argc, char *argv[])
     /* Latency test */
     for (size = options.min_message_size; size <= options.max_message_size;
             size = (size ? size * 2 : 1)) {
-
+        omb_ddt_size = omb_ddt_get_size(size);
         if (options.buf_num == MULTIPLE) {
             if (allocate_memory_pt2pt_size(&s_buf, &r_buf, myid, size)) {
                 /* Error allocating memory */
@@ -117,6 +119,8 @@ main (int argc, char *argv[])
             }
         }
 
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
 
@@ -150,10 +154,10 @@ main (int argc, char *argv[])
                         touch_managed_src(s_buf, size);
                     }
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, 1,
-                                MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, 1,
-                                MPI_COMM_WORLD, &reqstat));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype,
+                                1, 1, MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype,
+                                1, 1, MPI_COMM_WORLD, &reqstat));
 #ifdef _ENABLE_CUDA_KERNEL_
                     if (options.src == 'M') {
                         touch_managed_src(r_buf, size);
@@ -177,15 +181,15 @@ main (int argc, char *argv[])
                         touch_managed_dst(s_buf, size);
                     }
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 0, 1,
-                                MPI_COMM_WORLD, &reqstat));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype,
+                                0, 1, MPI_COMM_WORLD, &reqstat));
 #ifdef _ENABLE_CUDA_KERNEL_
                     if (options.dst == 'M') {
                         touch_managed_dst(r_buf, size);
                     }
 #endif /* #ifdef _ENABLE_CUDA_KERNEL_ */
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 0, 1,
-                                MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Send(s_buf ,omb_ddt_size, omb_ddt_datatype,
+                                0, 1, MPI_COMM_WORLD));
                 }
                 if (options.validate) {
                     errors = validate_data(r_buf, size, 1, options.accel, i);
@@ -197,16 +201,21 @@ main (int argc, char *argv[])
 
         if (myid == 0) {
             double latency = (t_total * 1e6) / (2.0 * options.iterations);
+            fprintf(stdout, "%-*d", 10, size);
             if (options.validate) {
-                fprintf(stdout, "%-*d%*.*f%*s\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency, FIELD_WIDTH,
-                        VALIDATION_STATUS(errors));
+                fprintf(stdout, "%*.*f%*s", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency, FIELD_WIDTH, VALIDATION_STATUS(errors));
             } else{
-                fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency);
+                fprintf(stdout, "%*.*f", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency);
             }
+            if (options.omb_enable_ddt) {
+                fprintf(stdout, "%*d", FIELD_WIDTH, omb_ddt_transmit_size);
+            }
+            fprintf(stdout, "\n");
             fflush(stdout);
         }
+        omb_ddt_free(&omb_ddt_datatype);
         if (options.buf_num == MULTIPLE) {
             free_memory(s_buf, r_buf, myid);
         }

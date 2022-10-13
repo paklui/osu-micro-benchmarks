@@ -190,6 +190,9 @@ void * recv_thread(void *arg)
     char * ret = NULL;
     char *s_buf, *r_buf;
     thread_tag_t *thread_id;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     thread_id = (thread_tag_t *)arg;
     val = thread_id->id;
@@ -211,6 +214,7 @@ void * recv_thread(void *arg)
 
     for (size = options.min_message_size, iter = 0; size <=
             options.max_message_size; size = (size ? size * 2 : 1)) {
+        omb_ddt_size = omb_ddt_get_size(size);
         pthread_mutex_lock(&finished_size_mutex);
 
         if (finished_size == options.num_threads) {
@@ -234,6 +238,8 @@ void * recv_thread(void *arg)
             options.skip = options.skip_large;
         }
 
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         /* touch the data */
         set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
@@ -250,14 +256,16 @@ void * recv_thread(void *arg)
             }
             for (j = 0; j <= options.warmup_validation; j++) {
                 if (options.sender_thread>1) {
-                    MPI_Recv (r_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD,
-                            &reqstat[val]);
-                    MPI_Send (s_buf, size, MPI_CHAR, 0, i, MPI_COMM_WORLD);
+                    MPI_Recv (r_buf, omb_ddt_size, omb_ddt_datatype, 0, i,
+                            MPI_COMM_WORLD, &reqstat[val]);
+                    MPI_Send (s_buf, omb_ddt_size, omb_ddt_datatype, 0, i,
+                            MPI_COMM_WORLD);
                 }
                 else {
-                    MPI_Recv (r_buf, size, MPI_CHAR, 0, 1, MPI_COMM_WORLD,
-                            &reqstat[val]);
-                    MPI_Send (s_buf, size, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
+                    MPI_Recv (r_buf, omb_ddt_size, omb_ddt_datatype, 0, 1,
+                            MPI_COMM_WORLD, &reqstat[val]);
+                    MPI_Send (s_buf, omb_ddt_size, omb_ddt_datatype, 0, 2,
+                            MPI_COMM_WORLD);
                 }
             }
             if (options.validate) {
@@ -266,6 +274,7 @@ void * recv_thread(void *arg)
             }
         }
 
+        omb_ddt_free(&omb_ddt_datatype);
         iter++;
         if (options.validate) {
             MPI_CHECK(MPI_Allreduce(&local_errors, &errors_reduced, 1, MPI_INT,
@@ -293,6 +302,9 @@ void * send_thread(void *arg)
     thread_tag_t *thread_id = (thread_tag_t *)arg;
     char *ret = NULL;
     int flag_print = 0;
+    MPI_Datatype omb_ddt_datatype = MPI_CHAR;
+    size_t omb_ddt_size = 0;
+    size_t omb_ddt_transmit_size = 0;
 
     val = thread_id->id;
 
@@ -313,6 +325,7 @@ void * send_thread(void *arg)
 
     for (size = options.min_message_size, iter = 0; size <=
             options.max_message_size; size = (size ? size * 2 : 1)) {
+        omb_ddt_size = omb_ddt_get_size(size);
         pthread_mutex_lock(&finished_size_sender_mutex);
 
         if (finished_size_sender == num_threads_sender) {
@@ -335,6 +348,8 @@ void * send_thread(void *arg)
             options.skip = options.skip_large;
         }
 
+        omb_ddt_transmit_size = omb_ddt_assign(&omb_ddt_datatype, MPI_CHAR,
+                size);
         /* touch the data */
         set_buffer_pt2pt(s_buf, myid, options.accel, 'a', size);
         set_buffer_pt2pt(r_buf, myid, options.accel, 'b', size);
@@ -361,15 +376,15 @@ void * send_thread(void *arg)
                 }
 
                 if (options.sender_thread > 1) {
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, i,
-                                MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, i,
-                                MPI_COMM_WORLD, &reqstat[val]));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype, 1,
+                                i, MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype, 1,
+                                i, MPI_COMM_WORLD, &reqstat[val]));
                 } else {
-                    MPI_CHECK(MPI_Send(s_buf, size, MPI_CHAR, 1, 1,
-                                MPI_COMM_WORLD));
-                    MPI_CHECK(MPI_Recv(r_buf, size, MPI_CHAR, 1, 2,
-                                MPI_COMM_WORLD, &reqstat[val]));
+                    MPI_CHECK(MPI_Send(s_buf, omb_ddt_size, omb_ddt_datatype, 1,
+                                1, MPI_COMM_WORLD));
+                    MPI_CHECK(MPI_Recv(r_buf, omb_ddt_size, omb_ddt_datatype, 1,
+                                2, MPI_COMM_WORLD, &reqstat[val]));
                 }
 
                 if (i >= options.skip && j == options.warmup_validation) {
@@ -392,16 +407,22 @@ void * send_thread(void *arg)
         if (flag_print == 1) {
             latency = (t_total) * 1.0e6 / (2.0 * options.iterations /
                     num_threads_sender);
+            fprintf(stdout, "%-*d", 10, size);
             if (options.validate) {
-                fprintf(stdout, "%-*d%*.*f%*s\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency, FIELD_WIDTH,
+                fprintf(stdout, "%*.*f%*s", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency, FIELD_WIDTH,
                         VALIDATION_STATUS(errors_reduced));
             } else {
-                fprintf(stdout, "%-*d%*.*f\n", 10, size, FIELD_WIDTH,
-                        FLOAT_PRECISION, latency);
+                fprintf(stdout, "%*.*f", FIELD_WIDTH, FLOAT_PRECISION,
+                        latency);
             }
+            if (options.omb_enable_ddt) {
+                fprintf(stdout, "%*d", FIELD_WIDTH, omb_ddt_transmit_size);
+            }
+            fprintf(stdout, "\n");
             fflush(stdout);
         }
+        omb_ddt_free(&omb_ddt_datatype);
         iter++;
         if (options.validate && errors_reduced !=0) {
             break;
